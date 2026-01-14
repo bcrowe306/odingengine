@@ -1,5 +1,6 @@
 # Ignore all dSYM files
 **/*.dSYM
 
-# Ignore build directory
+# Ignore build directory including the directory itself
 /build/
+/build
