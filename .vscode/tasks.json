@@ -1,11 +1,21 @@
 {
     "version": "2.0.0",
     "tasks": [
+        // Create build directory if it doesn't exist
+        {
+            "label": "create-build-dir",
+            "group": "build",
+            "type": "shell",
+            "command": "mkdir",
+            "args": ["-p", "build"],
+            "problemMatcher": []
+        },
         {
             "label": "build-odin",
             "type": "shell",
+            "dependsOn": "create-build-dir",
             "command": "odin",
-            "args": ["build", ".", "-out:main"],
+            "args": ["build", ".", "-out:build/main"],
             "group": {
                 "kind": "build",
                 "isDefault": true
@@ -22,7 +32,7 @@
             "label": "run-odin",
             "type": "shell",
             "command": "odin",
-            "args": ["run", "."],
+            "args": ["run", ".", "-out:build/main"],
             "group": "build",
             "presentation": {
                 "echo": true,
@@ -34,12 +44,13 @@
         },
         {
             "label": "build-debug",
+            "dependsOn": "create-build-dir",
             "type": "shell",
             "command": "odin",
             "args": [
                 "build",
                 ".",
-                "-out:debug",
+                "-out:build/debug",
                 "-debug"
             ],
             "group": {

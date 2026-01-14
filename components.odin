@@ -1,24 +1,29 @@
 package main
 
-import "core:c"
-import "core:crypto/_aes/hw_intel"
-import "core:slice"
-import fmt "core:fmt"
 import rl "vendor:raylib"
-import sort "core:sort"
-import hash "core:hash"
-import bytes "core:bytes"
-
-
 
 TransformComponent :: struct {
     position: rl.Vector2,
     global_pos: rl.Vector2,
     scale: rl.Vector2,
+    global_scale: rl.Vector2,
     origin: rl.Vector2,
     rotation: f32,
+    global_rotation: f32,
 }
 
+
+TextureComponent :: struct {
+    org_source_region: rl.Rectangle,
+    source_region: rl.Rectangle,
+    offset: rl.Vector2,
+    h_frames: u32,
+    v_frames: u32,
+    flip_h: bool,
+    flip_v: bool,
+    texture: rl.Texture2D,
+    color: rl.Color,
+}
 
 Rectangle2D :: struct {
     size: rl.Vector2,

@@ -1,6 +1,3 @@
-TODO: Sprite2D
-TODO: AudioPlayer/Stream
-TODO: AnimationPlayer/Animation
 TODO: ParallaxLayer
 TODO: Collider
 TODO: MoverComponent
@@ -10,11 +7,9 @@ TODO: Physics
 TODO: Raycasts
 TODO: Tilemap
 TODO: Statemachine
-TODO: ResourceManager
 TODO: Memory Cleanup/Optimize
 TODO: Combat System
 TODO: UI Components
-TODO: Input Actions
 TODO: CollisionLayers/Masking
 TODO: ParticleSystem
 TODO: LevelEditor

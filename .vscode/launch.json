@@ -5,7 +5,7 @@
             "name": "Run Odin Program",
             "type": "lldb",
             "request": "launch",
-            "program": "${workspaceFolder}/main",
+            "program": "${workspaceFolder}/build/main",
             "args": [],
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "build-odin"
@@ -14,7 +14,7 @@
             "name": "Debug Odin Program",
             "type": "lldb",
             "request": "launch",
-            "program": "${workspaceFolder}/debug",
+            "program": "${workspaceFolder}/build/debug",
             "args": [],
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "build-debug",
