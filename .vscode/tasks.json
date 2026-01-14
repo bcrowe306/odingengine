@@ -31,6 +31,27 @@
                 "panel": "shared"
             },
             "problemMatcher": []
-        }
+        },
+        {
+            "label": "build-debug",
+            "type": "shell",
+            "command": "odin",
+            "args": [
+                "build",
+                ".",
+                "-out:debug",
+                "-debug"
+            ],
+            "group": {
+                "kind": "build",
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "silent",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
     ]
 }

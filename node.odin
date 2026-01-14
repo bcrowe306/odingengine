@@ -1,97 +1,210 @@
 package main
 
+import "core:c"
 import rl "vendor:raylib"
-import uuid "core:encoding/uuid"
-import crypto "core:crypto"
+import fmt "core:fmt"
 
-NodeDrawDef :: proc(node: ^Node)
-NodeProcessDef :: proc(node: ^Node, delta: f32)
+NODE_ID_COUNTER : u64 = 1
+NodeType:: enum {
+    Node,
+    Rectangle,
+}
+nodeDrawSignature :: proc(node_ptr: rawptr)
+nodeProcessSignature :: proc(node_ptr: rawptr, delta: f32)
+nodeReadySignature :: proc(node_ptr: rawptr)
+// Base Node -----------------------
 
 Node :: struct {
-    id: uuid.Identifier,
-    position: rl.Vector2,
-    scale: rl.Vector2,
-    rotation: f32,
-    parent: ^Node,
-    children: [dynamic]Node,
-    add_queue: [dynamic]Node,
-    remove_queue: [dynamic]uuid.Identifier,
-    draw: NodeDrawDef,
-    process: NodeProcessDef,
+    id: u64,
+    name: string,
+    type: NodeType,
+    children: [dynamic]rawptr,
+    add_queue: [dynamic]rawptr,
+    remove_queue: [dynamic]u64,
+    parent: rawptr,
+    transform: TransformComponent,
+    layer: string,
+    visible: bool,
+    enabled: bool,
+    initialized: bool,
+    ready: nodeReadySignature,
+    process: nodeProcessSignature,
+    draw: nodeDrawSignature,
+    on_ready: Signal(^Node),
+    
+    
 }
 
+getNewNodeID :: proc() -> u64 {
+    id := NODE_ID_COUNTER
+    NODE_ID_COUNTER += 1
+    return id
+}
 
-nodeConstruct :: proc(position: rl.Vector2, scale: rl.Vector2, rotation: f32) -> Node {
-    context.random_generator = crypto.random_generator()
-    node: Node
-    node.id = uuid.generate_v4()
-    node.position = position
-    node.scale = scale
-    node.rotation = rotation
-    node.draw = nodeDraw
-    node.process = nodeProcess
+setGenericName :: proc(node: ^Node) {
+    node.name = fmt.tprintf("Node_%d", node.id)
+}
+
+setNodeDefaults :: proc(node: ^Node, name: string = "") {
+    node.id = getNewNodeID()
+    if name != "" {
+        node.name = name
+    } else {
+        setGenericName(node)
+    }
+    node.layer = BACKGROUND_LAYER
+    node.visible = true
+    node.enabled = true
+    node.initialized = false
+    node.ready = nodeReady
+    node.on_ready.name = "on_ready"
+}
+
+createNode :: proc(name: string = "") -> ^Node {
+    node := new(Node)
+    node.type = NodeType.Node
+    setNodeDefaults(node, name)
+    node.draw = drawNode
     return node
 }
-nodeAddChild :: proc(node: ^Node, child: Node) {
-    append(&node.add_queue, child)
+
+addChildNode :: proc(parent: ^Node, child: ^Node) {
+    append(&parent.add_queue, cast(rawptr)child)
 }
 
-nodeRemoveChild :: proc(node: ^Node, child_id: uuid.Identifier) {
-    append(&node.remove_queue, child_id)
+removeChildNode :: proc(parent: ^Node, child_id: u64) {
+    append(&parent.remove_queue, child_id)
 }
 
-nodeProcessQueues :: proc(node: ^Node) {
-    // Process removals
+processQueues :: proc(node: ^Node) {
+
+    // Process remove queue
     for child_id in node.remove_queue {
-        for child, index in node.children {
-            if child.id == child_id {
+        for child_ptr, index in node.children {
+            child_node := cast(^Node)child_ptr
+            if child_node.id == child_id {
+                // Remove child
+                child_node.parent = nil
+                child_node.initialized = false
                 ordered_remove(&node.children, index)
+                
                 break
             }
         }
     }
     clear(&node.remove_queue)
-    
-    // Process additions
-    for &child in node.add_queue {
-        append(&node.children, child)
-        child.parent = node
+
+    // Process add queue
+    for &child_ptr in node.add_queue {
+        append(&node.children, child_ptr)
+        child:= cast(^Node)child_ptr
+        child.parent = cast(rawptr)node
+        if !child.initialized {
+            if child.ready != nil {
+                child.ready(cast(rawptr)child)
+            }
+            child.initialized = true
+        }
     }
     clear(&node.add_queue)
 
-    for &child in node.children {
-        nodeProcessQueues(&child)
+    // Process children queues
+    for &child_ptr in node.children {
+        child_node := cast(^Node)child_ptr
+        processQueues(child_node)
+    }
+
+    if !node.initialized {
+        if node.ready != nil {
+            node.ready(cast(rawptr)node)
+        }
+        node.initialized = true
     }
     
 }
 
-nodeUpdate :: proc(node: ^Node, delta: f32) {
-    // Placeholder for update logic
-    for &child in node.children {
-        nodeUpdate(&child, delta)
+updateNodes :: proc(node: ^Node, delta: f32) {
+    if !node.enabled {
+        return
     }
-    node.process(node, delta)
-}
 
-nodeRender :: proc(node: ^Node) {
-    // Placeholder for render logic
-    for &child in node.children {
-        nodeRender(&child)
+    // Update this node
+    if node.parent == nil {
+        node.transform.global_pos = node.transform.position
     }
-    node.draw(node)
-}
 
-
-nodeProcess :: proc(node: ^Node, delta: f32) {
-    // Placeholder for processing logic
+    if node.process != nil {
+        node.process(cast(rawptr)node, delta)
+    }
     
-}
 
-
-nodeDraw :: proc(node: ^Node) {
-    // Placeholder for drawing logic
-    for &child in node.children {
-        nodeDraw(&child)
+    // Update children
+    for &child_ptr in node.children {
+        child_node := cast(^Node)child_ptr
+        child_node.transform.global_pos = node.transform.position + child_node.transform.position
+        child_node.transform.rotation = node.transform.rotation + child_node.transform.rotation
+        child_node.transform.scale = node.transform.scale * child_node.transform.scale
+        updateNodes(child_node, delta)
     }
-    rl.DrawCircleV(node.position, 10, rl.BLUE)   
 }
+
+
+renderNodes :: proc(node: ^Node, layer_name: string) {
+    // Render this node
+    if node.layer != layer_name || !node.visible {
+        return
+    }
+    if node.draw != nil {
+        node.draw(cast(rawptr)node)
+    }
+
+    // Render children
+    for &child_ptr in node.children {
+        child_node := cast(^Node)child_ptr
+        renderNodes(child_node, layer_name)
+    }
+}
+
+drawNode :: proc(node_ptr: rawptr) {
+    node := cast(^Node)node_ptr
+    // Draw this node
+    if node.draw != nil {
+        rl.DrawText(fmt.ctprintf(node.name), i32(node.transform.global_pos.x) + 10, i32(node.transform.global_pos.y) + 20 * i32(node.id), 20, rl.WHITE)
+    }
+}
+
+nodeReady :: proc(node_ptr: rawptr) {
+    node := cast(^Node)node_ptr
+    fmt.printfln("Node %s (ID: %d) is ready.", node.name, node.id)
+}
+
+
+RectNode :: struct {
+    using node: Node,
+    position: rl.Vector2,
+    size: rl.Vector2,
+    color: rl.Color,
+}
+
+createRectNode :: proc(name: string = "") -> ^RectNode {
+    node := new(RectNode)
+    setNodeDefaults(cast(^Node)node, name)
+    node.type = NodeType.Rectangle
+    node.size = rl.Vector2{50.0, 50.0}
+    node.color = rl.RED
+    node.draw = drawRectNode
+    node.ready = rectReady
+    return node
+}
+rectReady :: proc(node_ptr: rawptr) {
+    node := cast(^RectNode)node_ptr
+    signalEmit(&node.on_ready, cast(^Node)node)
+}
+drawRectNode :: proc(node_ptr: rawptr) {
+    node := cast(^RectNode)node_ptr
+    // Draw rectangle
+    rl.DrawRectangleV(node.transform.global_pos + 50 * f32(node.id) , node.size, node.color)
+
+}
+
+
