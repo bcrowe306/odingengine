@@ -1,5 +1,6 @@
 package main
 
+import "core:c"
 import "core:time"
 import rl "vendor:raylib"
 import box2d "vendor:box2d"
@@ -17,6 +18,19 @@ pixelToMeter :: proc(px: f32) -> f32 {
 
 meterToPixel :: proc(m: f32) -> f32 {
     return m * (CHARACTER_SIZE / CHARACTER_METERS)
+}
+
+// mousePositionInWorld :: proc(world_id: box2d.WorldId) -> rl.Vector2 {
+//     mousePos := rl.GetMousePosition()
+//     camPos := rl.GetCamera2D().target - rl.GetCamera2D().offset
+//     worldX := mousePos.x + camPos.x
+//     worldY := mousePos.y + camPos.y
+//     return rl.Vector2{worldX, worldY}
+// }
+
+getMousePositionInWorldMeters :: proc() -> box2d.Vec2 {
+    mousePos := rl.GetMousePosition()
+    return mousePos
 }
 
 PhysicsSettings :: struct {
@@ -43,8 +57,9 @@ GameObject :: struct {
     layer_manager: LayerManager,
     resource_manager: ^ResourceManager,
     physics_settings: PhysicsSettings,
-    init: proc(go: ^GameObject, root: ^Node),
-    run: proc(go: ^GameObject, root: ^Node, update_func: proc(go: ^GameObject, delta_time: f32) = nil),
+    init: proc(go: ^GameObject),
+    setRootNode: proc(go: ^GameObject, root: ^Node),
+    run: proc(go: ^GameObject, root: ^Node, update_func: proc(go: ^GameObject, root: ^Node, delta_time: f32) = nil),
     shutdown: proc(go: ^GameObject),
 
 }
@@ -78,7 +93,7 @@ createGameObject :: proc (title: string, window_size: rl.Vector2 = rl.Vector2{12
     game_obj.layer_manager = layerManagerConstruct()
     game_obj.resource_manager = createResourceManager()
     game_obj.physics_settings = PhysicsSettings{
-        worker_threads = 2,
+        worker_threads = 4,
         gravity = box2d.Vec2{0.0, 9.8},
         allow_sleep = true,
         time_step = 1.0 / 60.0,
@@ -87,10 +102,11 @@ createGameObject :: proc (title: string, window_size: rl.Vector2 = rl.Vector2{12
     game_obj.init = initializeGameObject
     game_obj.run = run
     game_obj.shutdown = shutdownGameObject
+    game_obj.setRootNode = setRootNode
     return game_obj
 }
 
-initializeGameObject :: proc (go: ^GameObject, root: ^Node) {
+initializeGameObject :: proc (go: ^GameObject) {
     
     setWindowFlags(go)
     rl.InitWindow(i32(go.window_size.x), i32(go.window_size.y), fmt.ctprint(go.title))
@@ -111,12 +127,13 @@ initializeGameObject :: proc (go: ^GameObject, root: ^Node) {
     go.actions_manager->createAction("ACTION_ATTACK", createInput(rl.KeyboardKey.J))
 
     go.resource_manager->loadDefaultFonts()
+}
 
+setRootNode :: proc (go: ^GameObject, root: ^Node) {
     init(root)
 }
 
-
-run :: proc (go: ^GameObject, root: ^Node, update_func: proc(go: ^GameObject, delta_time: f32) = nil) {
+run :: proc (go: ^GameObject, root: ^Node, update_func: proc(go: ^GameObject, root: ^Node, delta_time: f32) = nil) {
 
     for !rl.WindowShouldClose() {
         
@@ -141,8 +158,27 @@ run :: proc (go: ^GameObject, root: ^Node, update_func: proc(go: ^GameObject, de
 
             // Custom update function
             if update_func != nil {
-                update_func(go, delta)
+                update_func(go, root, delta)
             }
+            show_nodes :: proc (n: ^Node, depth: int, count: ^int) {
+                
+                
+                if rl.GuiButton(rl.Rectangle{10 + f32(depth * 20), 10 + f32(count^ * 30), 120, 25}, fmt.ctprintf("%d, %s", n.id, n.name)) {
+                    n->addChild(createNode("NewChild"))
+                }
+                count^ +=1
+                for &node_ptr, index in &n.children {
+                    n := cast(^Node)node_ptr
+                    
+                    if node_ptr != nil {
+                        show_nodes(n, depth + 1, count)
+                    }
+                   
+                }
+
+            }
+            nc := 0
+            show_nodes(root, 0, &nc)
 
             // Draw all layers in order
             for layer in getLayerDrawOrder(&go.layer_manager) {
