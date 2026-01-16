@@ -71,6 +71,13 @@ loadTexture :: proc(rm: ^ResourceManager, path: string) -> rl.Texture2D {
     }
 }
 
+unloadTextures :: proc(rm: ^ResourceManager) {
+    for _, texture_resource in rm.textures {
+        rl.UnloadTexture(texture_resource.texture)
+    }
+    clear(&rm.textures)
+}
+
 loadFont :: proc(rm: ^ResourceManager, path: string, name: string) -> rl.Font {
     if font_resource, exists := rm.fonts[path]; exists {
         font_resource.ref_count += 1
@@ -109,4 +116,9 @@ freeResources :: proc(rm: ^ResourceManager) {
         rl.UnloadSound(sound)
     }
     clear(&rm.sounds)
+
+    for _, font_resource in rm.fonts {
+        rl.UnloadFont(font_resource.font)
+    }
+    clear(&rm.fonts)
 }

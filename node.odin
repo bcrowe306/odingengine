@@ -16,6 +16,7 @@ NodeType:: enum {
     AnimatedSprite2D,
     Text2D,
     AudioPlayer,
+    CharacterMover,
 }
 nodeDrawSignature :: proc(node_ptr: rawptr)
 nodeProcessSignature :: proc(node_ptr: rawptr, delta: f32)
@@ -345,7 +346,7 @@ rectReady :: proc(node_ptr: rawptr) {
 drawRectNode :: proc(node_ptr: rawptr) {
     node := cast(^RectNode)node_ptr
     // Draw rectangle
-    rl.DrawRectangleV(node.transform.global_pos + 50 * f32(node.id) , node.size, node.color)
+    rl.DrawRectangleV(node.transform.global_pos , node.size, node.color)
 
 }
 

@@ -242,6 +242,7 @@ createActionsManager :: proc() -> ^ActionsManager {
     am.actions = map[string]^Action{}
     am.createAction = createActionInManager
     am.getAction = getActionFromManager
+    am.getAxis = getAxis
     return am
 }
 
