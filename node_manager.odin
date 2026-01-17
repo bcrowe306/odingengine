@@ -196,7 +196,7 @@ addChild :: proc(nm: ^NodeManager, parent_ptr: rawptr, child_ptr: rawptr) {
     }
     
     if parent_index == child_index {
-        fmt.printfln("Cannot add child. Parent and child nodes are the same")
+        fmt.printfln("Cannot add child. Parent and child nodes are the same: P: %d, C: %d", parent_index, child_index)
         return
     }
 
@@ -440,20 +440,7 @@ getNodeByName :: proc(this: ^NodeManager, name: string) -> rawptr {
 
 // Add node to process list
 _addNodeToProcessList :: proc(this: ^NodeManager, parent_index: NodeIndex, child_index: NodeIndex) {
-    parent_in_list := false
-    child_in_list := false
-    for node_index in this.nodesToProcess {
-        if node_index == child_index {
-            child_in_list = true
-        }
-        if node_index == parent_index {
-            parent_in_list = true
-        }
-    }
-    if parent_in_list && !child_in_list {
-        append(&this.nodesToProcess, child_index)
-        return
-    }
+    append(&this.nodesToProcess, child_index)
 }
 
 // Remove node from process list
@@ -468,20 +455,20 @@ _removeNodeFromProcessList :: proc(this: ^NodeManager, index: NodeIndex) {
 
 // Add node to draw list
 _addNodeToDrawList :: proc(this: ^NodeManager, parent_index: NodeIndex, child_index: NodeIndex) {
-    child_in_list := false
-    parent_in_list := isNodeInTree(this, parent_index)
-    for node_index in this.nodesToDraw {
-        if node_index == child_index {
-            child_in_list = true
-        }
-    }
-    if parent_in_list && !child_in_list {
+    // child_in_list := false
+    // parent_in_list := isNodeInTree(this, parent_index)
+    // for node_index in this.nodesToDraw {
+    //     if node_index == child_index {
+    //         child_in_list = true
+    //     }
+    // }
+    // if parent_in_list && !child_in_list {
         append(&this.nodesToDraw, child_index)
-        return
-    }
-    else {
-        fmt.printfln("Parent Id: %d not in draw list. Cannot add child Id: %d", parent_index, child_index)
-    }
+    //     return
+    // }
+    // else {
+    //     fmt.printfln("Parent Id: %d not in draw list. Cannot add child Id: %d", parent_index, child_index)
+    // }
 }
 
 // Remove node from draw list
@@ -618,10 +605,14 @@ _processRelationships :: proc(nm: ^NodeManager) {
 
 isNodeInTree :: proc(nm: ^NodeManager, index: NodeIndex) -> bool {
     root := nm->getNodeByIndex(nm._root_node)
+    root_node := cast(^Node)root
     if root == nil {
         return false
     }
-    root_node := cast(^Node)root
+    if nm._root_node == index {
+        return true
+    }
+    
     isNodeIndChilren :: proc(nm: ^NodeManager, current: ^Node, target_index: NodeIndex) -> bool {
         for child_index in current.children {
             if child_index == target_index {

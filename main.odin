@@ -35,7 +35,9 @@ main :: proc() {
     GAME.node_manager->addChild(root, player_text)
 
     floorBody := createStaticBody(GAME.world_id, "FloorBody", rl.Vector2{640, 668})
+    GAME.node_manager->addNode(cast(rawptr)floorBody)
     floorShape := createRectangleCollisionShape(GAME.world_id, floorBody.body_id, rl.Vector2{1260, 100})
+    GAME.node_manager->addNode(cast(rawptr)floorShape)
     addCollisionShape(cast(^PhysicsBody)floorBody, cast(^CollisionShape)floorShape)
     GAME.node_manager->addChild(root, cast(rawptr)floorBody)
 
@@ -61,7 +63,7 @@ main :: proc() {
 
     // Run the main game loop
     GAME->run(root, proc(go: ^GameObject, root: ^Node, delta_time: f32) {
-        if rl.IsMouseButtonPressed(rl.MouseButton.LEFT) {
+        if rl.IsMouseButtonDown(rl.MouseButton.LEFT) {
             using GAME
             newBody := createDynamicBody(GAME.world_id, "RockBody", rl.GetMousePosition())
             node_manager->addNode(cast(rawptr)newBody)

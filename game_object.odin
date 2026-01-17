@@ -83,7 +83,7 @@ setWindowFlags :: proc(go: ^GameObject) {
 
 }
 
-createGameObject :: proc (title: string, window_size: rl.Vector2 = rl.Vector2{1280, 720}, background_color: rl.Color = rl.DARKGRAY, target_fps: i32 = 60) -> ^GameObject {
+createGameObject :: proc (title: string, window_size: rl.Vector2 = rl.Vector2{1280, 720}, background_color: rl.Color = rl.DARKGRAY, target_fps: i32 = 120) -> ^GameObject {
     game_obj := new(GameObject)
     game_obj.window_size = window_size
     game_obj.window_resizable = true
