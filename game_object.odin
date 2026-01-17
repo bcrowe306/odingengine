@@ -53,12 +53,15 @@ GameObject :: struct {
     background_color: rl.Color,
     target_fps: i32,
     world_id: box2d.WorldId,
+    // Core Objects
+
     actions_manager: ^ActionsManager,
     layer_manager: LayerManager,
     resource_manager: ^ResourceManager,
     physics_settings: PhysicsSettings,
+    node_manager: ^NodeManager,
     init: proc(go: ^GameObject),
-    setRootNode: proc(go: ^GameObject, root: ^Node),
+    setRoot: proc(go: ^GameObject, root: NodeIndentifier),
     run: proc(go: ^GameObject, root: ^Node, update_func: proc(go: ^GameObject, root: ^Node, delta_time: f32) = nil),
     shutdown: proc(go: ^GameObject),
 
@@ -92,6 +95,7 @@ createGameObject :: proc (title: string, window_size: rl.Vector2 = rl.Vector2{12
     game_obj.actions_manager = createActionsManager()
     game_obj.layer_manager = layerManagerConstruct()
     game_obj.resource_manager = createResourceManager()
+    game_obj.node_manager = constructNodeManager()
     game_obj.physics_settings = PhysicsSettings{
         worker_threads = 4,
         gravity = box2d.Vec2{0.0, 9.8},
@@ -102,7 +106,7 @@ createGameObject :: proc (title: string, window_size: rl.Vector2 = rl.Vector2{12
     game_obj.init = initializeGameObject
     game_obj.run = run
     game_obj.shutdown = shutdownGameObject
-    game_obj.setRootNode = setRootNode
+    game_obj.setRoot = setRoot
     return game_obj
 }
 
@@ -129,67 +133,75 @@ initializeGameObject :: proc (go: ^GameObject) {
     go.resource_manager->loadDefaultFonts()
 }
 
-setRootNode :: proc (go: ^GameObject, root: ^Node) {
-    init(root)
+setRoot :: proc (go: ^GameObject, root: NodeIndentifier) {
+    // Process add/remove queues
+    go.node_manager->_processNodeQueues()
+    go.node_manager->_processRelationships()
+    go.node_manager->setRootNode(root)
+}
+
+
+drawStats :: proc(go: ^GameObject, draw_nodes: bool = false) {
+    rl.DrawFPS(10, 10)
+    rl.DrawText(fmt.ctprint(fmt.tprintf("Nodes: %d", len(go.node_manager._nodes))), 10, 30, 15, rl.GREEN)
+    rl.DrawText(fmt.ctprint(fmt.tprintf("Process_Nodes: %d", len(go.node_manager.nodesToProcess))), 10, 50, 15, rl.GREEN)
+    rl.DrawText(fmt.ctprint(fmt.tprintf("Draw_Nodes: %d", len(go.node_manager.nodesToDraw))), 10, 70, 15, rl.GREEN)
+    rl.DrawText(fmt.ctprint(fmt.tprintf("Child Add Queue: %d", len(go.node_manager._addChildQueue))), 10, 90, 15, rl.GREEN)
+    rl.DrawText(fmt.ctprint(fmt.tprintf("Child Remove Queue: %d", len(go.node_manager._removeChildQueue))), 10, 110, 15, rl.GREEN)
+    rl.DrawText(fmt.ctprint(fmt.tprintf("Node Add Queue: %d", len(go.node_manager._nodeAddQueue))), 10, 130, 15, rl.GREEN)
+    rl.DrawText(fmt.ctprint(fmt.tprintf("Node Remove Queue: %d", len(go.node_manager._nodeRemoveQueue))), 10, 150, 15, rl.GREEN)
+    if !draw_nodes {
+        return
+    }
+    for node_ptr, index in go.node_manager._nodes {
+        node := cast(^Node)node_ptr
+        if node != nil {
+            rl.DrawText(fmt.ctprint(fmt.tprintf("Node: %s ID: %d", node.name, node.id)), 10, 170 + (20 * i32(index)), 15, rl.LIGHTGRAY)
+        }
+    }
 }
 
 run :: proc (go: ^GameObject, root: ^Node, update_func: proc(go: ^GameObject, root: ^Node, delta_time: f32) = nil) {
-
+    using go
     for !rl.WindowShouldClose() {
         
         rl.BeginTextureMode(go.render_target)
-            
 
             // Process add/remove queues
-            processQueues(root)
+            node_manager->_processNodeQueues()
+            node_manager->_processRelationships()
+            node_manager._is_in_game_loop = true
 
             rl.ClearBackground(go.background_color)
             delta := rl.GetFrameTime()
 
             // Update physics world according to time step settings
-            go.physics_settings.elapsed_time += delta
-            if go.physics_settings.elapsed_time >= go.physics_settings.time_step {
-                box2d.World_Step(go.world_id, go.physics_settings.time_step, i32(go.physics_settings.substep_count))
-                go.physics_settings.elapsed_time = 0.0
+            physics_settings.elapsed_time += delta
+            if physics_settings.elapsed_time >= physics_settings.time_step {
+                box2d.World_Step(world_id, physics_settings.time_step, i32(physics_settings.substep_count))
+                physics_settings.elapsed_time = 0.0
             }
 
             // Update nodes
-            updateNodes(root, delta)
-
+            node_manager->_proccessRootTree(delta)
             // Custom update function
             if update_func != nil {
                 update_func(go, root, delta)
             }
-            show_nodes :: proc (n: ^Node, depth: int, count: ^int) {
-                
-                
-                if rl.GuiButton(rl.Rectangle{10 + f32(depth * 20), 10 + f32(count^ * 30), 120, 25}, fmt.ctprintf("%d, %s", n.id, n.name)) {
-                    n->addChild(createNode("NewChild"))
-                }
-                count^ +=1
-                for &node_ptr, index in &n.children {
-                    n := cast(^Node)node_ptr
-                    
-                    if node_ptr != nil {
-                        show_nodes(n, depth + 1, count)
-                    }
-                   
-                }
-
-            }
-            nc := 0
-            show_nodes(root, 0, &nc)
-
-            // Draw all layers in order
-            for layer in getLayerDrawOrder(&go.layer_manager) {
-                renderNodes(root, layer.name)
-            }
+            
+            // Draw nodes
+            // TODO: Implement layers properly
+            node_manager->_drawRootTree()
 
             // Close conditions
             if rl.IsKeyPressed(rl.KeyboardKey.ESCAPE) {
                 break
             }
+            // Draw Stats
+            drawStats(go)
+
         rl.EndTextureMode()
+        node_manager._is_in_game_loop = false
         rl.BeginDrawing()
         rl.ClearBackground(rl.BLACK) // Letterbox color
 

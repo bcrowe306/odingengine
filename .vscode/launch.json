@@ -20,6 +20,17 @@
             "preLaunchTask": "build-debug",
             "stopOnEntry": false,
             "internalConsoleOptions": "openOnSessionStart"
+        },
+        {
+            "name": "Current File",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/${fileBasenameNoExtension}",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "debug-current",
+            "stopOnEntry": false,
+            "internalConsoleOptions": "openOnSessionStart"
         }
     ]
 }

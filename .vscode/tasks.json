@@ -64,5 +64,25 @@
             },
             "problemMatcher": []
         },
+        {
+            "label": "debug-current",
+            "dependsOn": "create-build-dir",
+            "type": "shell",
+            "command": "odin",
+            "args": [
+                "build",
+                "${file}",
+                "-file",
+                "-out:build/${fileBasenameNoExtension}",
+                "-debug"
+            ],
+            "presentation": {
+                "echo": true,
+                "reveal": "silent",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        }
     ]
 }

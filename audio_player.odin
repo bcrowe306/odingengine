@@ -33,9 +33,6 @@ createAudioPlayer :: proc(rm: ^ResourceManager, name: string = "AudioPlayer", so
 }
 
 playAudioPlayerSound :: proc(ap: ^AudioPlayer) {
-    if !ap.is_ready{
-        return
-    }
     rl.SetSoundPan(ap.sound, ap.pan)
     rl.SetSoundVolume(ap.sound, ap.volume)
     rl.SetSoundPitch(ap.sound, ap.pitch)
@@ -43,9 +40,7 @@ playAudioPlayerSound :: proc(ap: ^AudioPlayer) {
 }
 
 playRandomPitchAudioPlayerSound :: proc(ap: ^AudioPlayer, min_pitch: f32, max_pitch: f32) {
-    if !ap.is_ready{
-        return
-    }
+    
     random_pitch := rl.GetRandomValue(cast(i32)(min_pitch * 100), cast(i32)(max_pitch * 100)) / 100.0
     rl.SetSoundPan(ap.sound, ap.pan)
     rl.SetSoundVolume(ap.sound, ap.volume)
@@ -55,8 +50,5 @@ playRandomPitchAudioPlayerSound :: proc(ap: ^AudioPlayer, min_pitch: f32, max_pi
 }
 
 stopAudioPlayerSound :: proc(ap: ^AudioPlayer) {
-    if !ap.is_ready{
-        return
-    }
     rl.StopSound(ap.sound)
 }

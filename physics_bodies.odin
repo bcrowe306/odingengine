@@ -36,7 +36,7 @@ createStaticBody :: proc(world_id: box2d.WorldId, name: string = "StaticBody", p
 
 addCollisionShape :: proc(pb: ^PhysicsBody, cs: ^CollisionShape) {
     node := cast(^Node)pb
-    addChildNode(node, cast(^Node)cs)
+    GAME.node_manager->addChild(node, cast(rawptr)cs)
 }
 
 
