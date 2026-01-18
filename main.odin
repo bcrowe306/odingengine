@@ -1,13 +1,30 @@
 package main
 
+import "core:math/rand"
 import "vendor:box2d"
 import rl "vendor:raylib"
 import fmt "core:fmt"
+import "core:mem"
 
 // Create the main game object as a global variable
-GAME := createGameObject("Oding Engine Test Game")
+GAME := createGameObject("Oding Engine Test Game", target_fps=120)
+TRACK: mem.Tracking_Allocator
+
+
 
 main :: proc() {
+    when ODIN_DEBUG {
+		mem.tracking_allocator_init(&TRACK, context.allocator)
+		context.allocator = mem.tracking_allocator(&TRACK)
+
+		defer {
+			mem.tracking_allocator_destroy(&TRACK)
+		}
+	}
+    // Profiling setup
+    prof_init()
+	defer prof_deinit()
+
     GAME->init()
 
     // Create root node and other game nodes
@@ -33,6 +50,10 @@ main :: proc() {
     GAME.node_manager->addChild(root, t1)
     GAME.node_manager->addChild(root, player)
     GAME.node_manager->addChild(root, player_text)
+
+    createFloorBody(GAME.world_id, "FloorBody", rl.Vector2{750, 200}, rl.Vector2{300, 40}, -30.0)
+    createFloorBody(GAME.world_id, "FloorBody", rl.Vector2{300, 400}, rl.Vector2{400, 40}, 15.0)
+    createFloorBody(GAME.world_id, "FloorBody", rl.Vector2{640, 668}, rl.Vector2{1260, 100})
 
     floorBody := createStaticBody(GAME.world_id, "FloorBody", rl.Vector2{640, 668})
     GAME.node_manager->addNode(cast(rawptr)floorBody)
@@ -64,13 +85,10 @@ main :: proc() {
     // Run the main game loop
     GAME->run(root, proc(go: ^GameObject, root: ^Node, delta_time: f32) {
         if rl.IsMouseButtonDown(rl.MouseButton.LEFT) {
-            using GAME
-            newBody := createDynamicBody(GAME.world_id, "RockBody", rl.GetMousePosition())
-            node_manager->addNode(cast(rawptr)newBody)
-            node_manager->addChild(root, cast(rawptr)newBody)
-            newShape := createCircleCollisionShape(GAME.world_id, newBody.body_id, 10.0)
-            node_manager->addNode(cast(rawptr)newShape)
-            addCollisionShape(cast(^PhysicsBody)newBody, cast(^CollisionShape)newShape)
+            color_hue := rand.float32_range(0.0, 360.0)
+            color := rl.ColorFromHSV(color_hue, 0.8, 0.9)
+
+            createRock(rl.GetMousePosition(), color)
             
         }
         

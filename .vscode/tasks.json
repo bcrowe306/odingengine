@@ -65,6 +65,29 @@
             "problemMatcher": []
         },
         {
+            "label": "build-profile",
+            "dependsOn": "create-build-dir",
+            "type": "shell",
+            "command": "odin",
+            "args": [
+                "build",
+                ".",
+                "-out:build/profile",
+                "-define:PROF_MODE=1",
+                "-debug",
+            ],
+            "group": {
+                "kind": "build",
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "silent",
+                "focus": false,
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
             "label": "debug-current",
             "dependsOn": "create-build-dir",
             "type": "shell",

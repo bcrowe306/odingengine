@@ -18,12 +18,29 @@ StaticBody :: struct {
     body_id: box2d.BodyId,
 }
 
-createStaticBody :: proc(world_id: box2d.WorldId, name: string = "StaticBody", position: rl.Vector2 = rl.Vector2{0, 0}) -> ^StaticBody {
+getWorldPosition :: proc (pb: ^PhysicsBody) -> rl.Vector2 {
+    world_pos := rl.Vector2{0, 0}
+    switch v in pb^ {
+        case DynamicBody:
+            bodyPos := box2d.Body_GetPosition(v.body_id)
+            world_pos = rl.Vector2{meterToPixel(bodyPos.x), meterToPixel(bodyPos.y)}
+        case KinematicBody:
+            bodyPos := box2d.Body_GetPosition(v.body_id)
+            world_pos = rl.Vector2{meterToPixel(bodyPos.x), meterToPixel(bodyPos.y)}
+        case StaticBody:
+            bodyPos := box2d.Body_GetPosition(v.body_id)
+            world_pos = rl.Vector2{meterToPixel(bodyPos.x), meterToPixel(bodyPos.y)}
+    }
+    return world_pos
+}
+
+createStaticBody :: proc(world_id: box2d.WorldId, name: string = "StaticBody", position: rl.Vector2 = rl.Vector2{0, 0}, rotation: f32 = 0.0) -> ^StaticBody {
     using box2d
     sb := new(StaticBody)
     setNodeDefaults(cast(^Node)sb, name)
     bodyDef := DefaultBodyDef()
     bodyDef.type = BodyType.staticBody
+    bodyDef.rotation = box2d.MakeRot(math.to_radians_f32(rotation))
     sb.transform.position = position
     bodyDef.position = sb.transform.position * METERTOPIXEL_SCALE
     body := CreateBody(world_id, bodyDef)
@@ -50,6 +67,7 @@ createDynamicBody :: proc(world_id: box2d.WorldId, name: string = "DynamicBody",
     using box2d
     db := new(DynamicBody)
     setNodeDefaults(cast(^Node)db, name)
+    db.exit_tree = on_rock_exit_tree
     bodyDef := DefaultBodyDef()
     bodyDef.type = BodyType.dynamicBody
     db.transform.position = position
@@ -60,12 +78,19 @@ createDynamicBody :: proc(world_id: box2d.WorldId, name: string = "DynamicBody",
     return db
 }
 
+on_rock_exit_tree :: proc(rock_ptr: rawptr) {
+    rock := cast(^DynamicBody)rock_ptr
+    // box2d.DestroyBody(rock.body_id)
+    box2d.Body_Disable(rock.body_id)
+}
+
 
 KinematicBody :: struct {
     using node: Node,
     world_id: box2d.WorldId,
     body_id: box2d.BodyId,
 }
+
 createKinematicBody :: proc(world_id: box2d.WorldId, name: string = "KinematicBody") -> ^KinematicBody {
     using box2d
     kb := new(KinematicBody)
@@ -77,4 +102,14 @@ createKinematicBody :: proc(world_id: box2d.WorldId, name: string = "KinematicBo
     kb.world_id = world_id
     kb.body_id = body
     return kb
+}
+
+
+createFloorBody :: proc(world_id: box2d.WorldId, name: string = "FloorBody", position: rl.Vector2 = rl.Vector2{0, 0}, size: rl.Vector2 = rl.Vector2{200, 40}, rotation: f32 = 0.0) {
+    floorBody := createStaticBody(GAME.world_id, "FloorBody", position, rotation)
+    GAME.node_manager->addNode(cast(rawptr)floorBody)
+    floorShape := createRectangleCollisionShape(GAME.world_id, floorBody.body_id, size)
+    GAME.node_manager->addNode(cast(rawptr)floorShape)
+    addCollisionShape(cast(^PhysicsBody)floorBody, cast(^CollisionShape)floorShape)
+    GAME.node_manager->addChild(getRoot(GAME), cast(rawptr)floorBody)
 }

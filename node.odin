@@ -45,6 +45,7 @@ Node :: struct {
     on_ready: Signal(^Node),
     getPath: proc(node: ^Node) -> string,
     getNode: proc(node: ^Node, path: string) -> rawptr,
+    getNodeCount: proc(node: ^Node) -> i32,
 }
 
 setNodeDefaults :: proc(node: ^Node, name: string = "") {
@@ -60,6 +61,7 @@ setNodeDefaults :: proc(node: ^Node, name: string = "") {
     node.getPath = getNodePath
     node.getNode = getNode
     node.globalTransform = getGlobalTransform
+    node.getNodeCount = getNodeCount
 
 }
 getNewNodeID :: proc() -> u64 {
@@ -70,6 +72,23 @@ getNewNodeID :: proc() -> u64 {
 
 setGenericName :: proc(node: ^Node) {
     node.name = fmt.tprintf("Node_%d", node.id)
+}
+
+// Get total nodes in tree starting from this node
+getNodeCount :: proc(node: ^Node) -> i32 {
+    count: i32 = 0
+    countChildren :: proc (n: ^Node, c: ^i32) {
+        for child_index in n.children {
+            child_ptr := n.nodeManager->getNodeByIndex(child_index)
+            child_node := cast(^Node)child_ptr
+            if child_node != nil {
+                c^ += 1
+                countChildren(child_node, c)
+            }
+        }
+    }
+    countChildren(node, &count)
+    return count
 }
 
 getRootNode :: proc(node: ^Node) -> ^Node {

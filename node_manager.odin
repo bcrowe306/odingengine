@@ -102,6 +102,9 @@ NodeManager :: struct {
     // Get a free node index from the pool, or -1 if none are available.
     _getFreeNodeIndex: proc(this: ^NodeManager) -> NodeIndex,
 
+    // Get count of free indices in the pool
+    _getFreePoolCount: proc(this: ^NodeManager) -> int,
+
     // Clear all relationships for a node
     _clearNodeRelationships: proc(this: ^NodeManager, node_ptr: rawptr),
 
@@ -170,7 +173,53 @@ constructNodeManager :: proc() -> ^NodeManager {
     manager._drawRootTree = _drawRootTree
     manager._initializeNodes = _initializeNodes
     manager._is_in_game_loop = false
+    manager._getFreePoolCount = _getFreePoolCount
     return manager
+}
+
+// Adds a node to the queue to be added to the NodeManager. Returns the assigned NodeID.
+addNode :: proc(this: ^NodeManager, node_ptr: rawptr) -> NodeID {
+    this->_newNodeId(node_ptr)
+    new_node := cast(^Node)node_ptr
+    new_node.nodeManager = this
+    new_node.parent = -1
+    if new_node.name == "" {
+        new_node.name = fmt.tprintf("Node_%d", new_node.id)
+    }
+    _, err := append(&this._nodeAddQueue, node_ptr)
+    if err != nil {
+        fmt.printfln("Error adding node to _nodeAddQueue: %s", err)
+        return cast(NodeID)-1
+    }
+
+    this->_processNodeQueues()
+
+    return new_node.id
+}
+
+// Remove node from the NodeManager and clean up relationships
+removeNode :: proc(this: ^NodeManager, node_ptr: rawptr) {
+    node := cast(^Node)node_ptr
+    if node == nil {
+        fmt.printfln("Cannot remove node. Node is nil")
+        return
+    }
+    index := this->getNodeIndex(node.id)
+    if index == -1 {
+        fmt.printfln("Node not found in NodeManager")
+        return
+    }
+    append(&this._nodeRemoveQueue, node_ptr)
+    for child_index in node.children {
+        child_ptr := this->getNodeByIndex(child_index)
+        child_node := cast(^Node)child_ptr
+        if child_node != nil {
+            this->removeNode(cast(rawptr)child_node)
+        }
+    }
+    if !this._is_in_game_loop {
+        this->_processNodeQueues()
+    }
 }
 
 
@@ -309,12 +358,30 @@ _clearNodeRelationships :: proc(this: ^NodeManager, node_ptr: rawptr) {
         return
     }
 
+    // Remove all children
+    for &child_index in &node.children {
+        child_node := cast(^Node)this._nodes[child_index]
+        if child_node != nil {
+            if node.exit_tree != nil {
+                node.exit_tree(cast(rawptr)child_node)
+            }
+            child_node.parent = -1
+            
+        }
+    }
+
     // Remove from parent
     if node.parent != -1 {
         parent_node := cast(^Node)this._nodes[node.parent]
         if parent_node != nil {
             for child_index, i in parent_node.children {
                 if child_index == node_index {
+                    child_node := cast(^Node)this._nodes[child_index]
+                    if child_node != nil {
+                        if child_node.exit_tree != nil {
+                            child_node.exit_tree(cast(rawptr)child_node)
+                        }
+                    }
                     ordered_remove(&parent_node.children, i)
                     break
                 }
@@ -323,13 +390,7 @@ _clearNodeRelationships :: proc(this: ^NodeManager, node_ptr: rawptr) {
         node.parent = -1
     }
 
-    // Remove all children
-    for &child_index in &node.children {
-        child_node := cast(^Node)this._nodes[child_index]
-        if child_node != nil {
-            child_node.parent = -1
-        }
-    }
+    
     clear(&node.children)
 }
 
@@ -344,58 +405,16 @@ _addIndexToPool :: proc(this: ^NodeManager, index: NodeIndex) {
     append(&this._nodePool, index)
 }
 
-_doNodeRemoval :: proc(this: ^NodeManager, index: NodeIndex) {
-    node := cast(^Node)this._nodes[index]
-    if node == nil {
-        fmt.printfln("Cannot remove node. Node is nil")
-        return
-    }
-    _clearNodeRelationships(this, cast(rawptr)node)
-    // Remove from draw list if present
-    for node_index, i in this.nodesToDraw {
-        if node_index == index {
-            ordered_remove(&this.nodesToDraw, i)
-            break
-        }
-    }
-    // Remove from process list if present
-    for node_index, i in this.nodesToProcess {
-        if node_index == index {
-            ordered_remove(&this.nodesToProcess, i)
-            break
-        }
-    }
-    // Set nodes[index] to nil or a placeholder'
-    this._nodes[index] = nil
-    
-    // Add index to nodePool for reuse
-    this->_addIndexToPool(index)
 
-    // Free the node memory
-    free(node)
-}
 
-removeNode :: proc(this: ^NodeManager, node_ptr: rawptr) {
-    node := cast(^Node)node_ptr
-    if node == nil {
-        fmt.printfln("Cannot remove node. Node is nil")
-        return
-    }
-    index := this->getNodeIndex(node.id)
-    if index == -1 {
-        fmt.printfln("Node not found in NodeManager")
-        return
-    }
-    append(&this._nodeRemoveQueue, node_ptr)
-    if !this._is_in_game_loop {
-        this->_processNodeQueues()
-    }
-}
 
 // Get index of node by its ID. Returns -1 if not found.
 getNodeIndex :: proc(this: ^NodeManager, node_id: NodeID) -> NodeIndex {
     for node_ptr, index in &this._nodes {
         node := cast(^Node)node_ptr
+        if node == nil {
+            continue
+        }
         if node.id == node_id {
             return cast(NodeIndex)index
         }
@@ -455,20 +474,12 @@ _removeNodeFromProcessList :: proc(this: ^NodeManager, index: NodeIndex) {
 
 // Add node to draw list
 _addNodeToDrawList :: proc(this: ^NodeManager, parent_index: NodeIndex, child_index: NodeIndex) {
-    // child_in_list := false
-    // parent_in_list := isNodeInTree(this, parent_index)
-    // for node_index in this.nodesToDraw {
-    //     if node_index == child_index {
-    //         child_in_list = true
-    //     }
-    // }
-    // if parent_in_list && !child_in_list {
-        append(&this.nodesToDraw, child_index)
-    //     return
-    // }
-    // else {
-    //     fmt.printfln("Parent Id: %d not in draw list. Cannot add child Id: %d", parent_index, child_index)
-    // }
+    for node_index in this.nodesToDraw {
+        if node_index == child_index {
+            return
+        }
+    }
+    append(&this.nodesToDraw, child_index)
 }
 
 // Remove node from draw list
@@ -481,26 +492,10 @@ _removeNodeFromDrawList :: proc(this: ^NodeManager, index: NodeIndex) {
     }
 }
 
-// Adds a node to the queue to be added to the NodeManager. Returns the assigned NodeID.
-addNode :: proc(this: ^NodeManager, node_ptr: rawptr) -> NodeID {
-    this->_newNodeId(node_ptr)
-    new_node := cast(^Node)node_ptr
-    new_node.nodeManager = this
-    new_node.parent = -1
-    if new_node.name == "" {
-        new_node.name = fmt.tprintf("Node_%d", new_node.id)
-    }
-    _, err := append(&this._nodeAddQueue, node_ptr)
-    if err != nil {
-        fmt.printfln("Error adding node to _nodeAddQueue: %s", err)
-        return cast(NodeID)-1
-    }
 
-    this->_processNodeQueues()
-
-    return new_node.id
+_getFreePoolCount :: proc(this: ^NodeManager) -> int {
+    return len(this._nodePool)
 }
-
 // Returns a free node index from the pool, or -1 if none are available.
 _getFreeNodeIndex :: proc(this: ^NodeManager) -> NodeIndex {
     if len(this._nodePool) > 0 {
@@ -525,6 +520,38 @@ _doAddNode :: proc(this: ^NodeManager, node: rawptr) {
         }
         new_node_index = cast(NodeIndex)(len(this._nodes) - 1)
     }
+}
+
+
+_doNodeRemoval :: proc(this: ^NodeManager, index: NodeIndex) {
+    node := cast(^Node)this._nodes[index]
+    if node == nil {
+        fmt.printfln("Cannot remove node. Node is nil")
+        return
+    }
+    _clearNodeRelationships(this, cast(rawptr)node)
+    // Remove from draw list if present
+    for node_index, i in this.nodesToDraw {
+        if node_index == index {
+            ordered_remove(&this.nodesToDraw, i)
+            break
+        }
+    }
+    // Remove from process list if present
+    for node_index, i in this.nodesToProcess {
+        if node_index == index {
+            ordered_remove(&this.nodesToProcess, i)
+            break
+        }
+    }
+    // Set nodes[index] to nil or a placeholder'
+    this._nodes[index] = nil
+    
+    // Add index to nodePool for reuse
+    this->_addIndexToPool(index)
+
+    // Free the node memory
+    free(node)
 }
 
 _processRelationships :: proc(nm: ^NodeManager) {
@@ -645,11 +672,12 @@ _processNodeQueues :: proc(nm: ^NodeManager) {
 
     // Process add queue
     for node_ptr in &nm._nodeAddQueue {
-        _, err := append(&nm._nodes, node_ptr)
-        if err != nil {
-            fmt.printfln("Error adding node from add queue: %s", err)
-            continue
-        }
+        nm->_doAddNode(node_ptr)
+        // _, err := append(&nm._nodes, node_ptr)
+        // if err != nil {
+        //     fmt.printfln("Error adding node from add queue: %s", err)
+        //     continue
+        // }
     }
     clear(&nm._nodeAddQueue)
 }

@@ -1,6 +1,5 @@
 package main
 
-import "vendor:box2d"
 import rl "vendor:raylib"
 import math "core:math"
 
