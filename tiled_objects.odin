@@ -303,6 +303,8 @@ createTileMapNode :: proc (tiled_map_path: string, resource_manager: ^ResourceMa
         tile_map_node.tileset_textures[tile_set.source] = texture
     }
 
+    // Create collision shapes from Tiled objects in "CollisionLayer"
+    // TODO: Make this configurable per map. Also needs to be in seperate function for greater control
     tile_map_node.draw = drawTileMapNode
     for &layer in &tile_map_node.tiled_map.layers {
         if layer.type == "objectgroup" && layer.name == "CollisionLayer" {

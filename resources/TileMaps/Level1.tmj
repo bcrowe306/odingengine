@@ -49,23 +49,6 @@
                  "y":638
                 }, 
                 {
-                 "height":721.333333333333,
-                 "id":4,
-                 "name":"",
-                 "properties":[
-                        {
-                         "name":"shape",
-                         "type":"string",
-                         "value":"Rectangle"
-                        }],
-                 "rotation":0,
-                 "type":"",
-                 "visible":true,
-                 "width":77.3333333333335,
-                 "x":1283.33333333333,
-                 "y":7.33333333333333
-                }, 
-                {
                  "height":62.2499999999999,
                  "id":5,
                  "name":"",

@@ -6,6 +6,14 @@ import box2d "vendor:box2d"
 import fmt "core:fmt"
 import math "core:math"
 
+FilterCategory :: enum u64 {
+    StaticBody = 1 << 30,
+    Movers = 1 << 31,
+    DynamicBody = 1 << 32,
+    KinematicBody = 1 << 33,
+}
+
+
 PhysicsBody :: union {
     DynamicBody,
     KinematicBody,
@@ -125,6 +133,10 @@ createStaticBodyBox2d :: proc(world_id: box2d.WorldId, position: rl.Vector2, siz
     body_id := CreateBody(world_id, bodyDef)
 
     shapeDef := box2d.DefaultShapeDef()
+    shapeDef.filter = box2d.Filter{
+        categoryBits = u64(FilterCategory.StaticBody),
+        maskBits = u64(FilterCategory.Movers) | u64(FilterCategory.DynamicBody) | u64(FilterCategory.KinematicBody),
+    }
     shapeDef.isSensor = false
     halfWidth := pixelToMeter(size.x / 2.0)
     halfHeight := pixelToMeter(size.y / 2.0)

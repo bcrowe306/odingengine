@@ -16,11 +16,6 @@
     <property name="shape" value="Rectangle"/>
    </properties>
   </object>
-  <object id="4" x="1283.33" y="7.33333" width="77.3333" height="721.333">
-   <properties>
-    <property name="shape" value="Rectangle"/>
-   </properties>
-  </object>
   <object id="5" x="807.583" y="429.75" width="274.417" height="62.25">
    <properties>
     <property name="shape" value="Rectangle"/>
