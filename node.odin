@@ -15,6 +15,7 @@ NodeType:: enum {
     Text2D,
     AudioPlayer,
     CharacterMover,
+    TileMapNode,
 }
 nodeDrawSignature :: proc(node_ptr: rawptr)
 nodeProcessSignature :: proc(node_ptr: rawptr, delta: f32)
@@ -29,14 +30,15 @@ Node :: struct {
     parent: NodeIndex,
     children: [dynamic]NodeIndex,
     nodeManager: ^NodeManager,
-    layer: string,
-    initialize: nodeInitializeSignature,
-    enter_tree: proc(node: rawptr),
-    ready: nodeReadySignature,
-    process: nodeProcessSignature,
-    draw: nodeDrawSignature,
-    exit_tree: proc(node: rawptr),
     is_initialized: bool,
+    layer: string,
+
+    initialize: proc(node_ptr: rawptr),
+    enter_tree: proc(node: rawptr),
+    ready: proc(node_ptr: rawptr),
+    process: proc(node_ptr: rawptr, delta: f32),
+    draw: proc(node_ptr: rawptr),
+    exit_tree: proc(node: rawptr),
     globalTransform: proc(node: ^Node) -> TransformComponent,
 
     transform: TransformComponent,

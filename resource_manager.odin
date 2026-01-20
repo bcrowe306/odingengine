@@ -7,6 +7,13 @@ DEFAULT_FONTS :: [][2]string {
     {"open_sans", "resources/Open_Sans/static/OpenSans-MediumItalic.ttf"},
 }
 
+FileResource :: struct {
+    data: []byte,
+    ref_count: u32,
+    file_path: string,
+    name: string,
+}
+
 FontResource :: struct {
     font: rl.Font,
     ref_count: u32,
@@ -25,6 +32,7 @@ ResourceManager :: struct {
     textures: map[string]TextureResource,
     sounds: map[string]rl.Sound,
     fonts: map[string]FontResource,
+    files: map[string]FileResource,
     loadTexture: proc(rm: ^ResourceManager, path: string) -> rl.Texture2D,
     loadSound: proc(rm: ^ResourceManager, path: string) -> rl.Sound,
     freeResources: proc(rm: ^ResourceManager),

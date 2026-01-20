@@ -20,13 +20,6 @@ meterToPixel :: proc(m: f32) -> f32 {
     return m * (CHARACTER_SIZE / CHARACTER_METERS)
 }
 
-// mousePositionInWorld :: proc(world_id: box2d.WorldId) -> rl.Vector2 {
-//     mousePos := rl.GetMousePosition()
-//     camPos := rl.GetCamera2D().target - rl.GetCamera2D().offset
-//     worldX := mousePos.x + camPos.x
-//     worldY := mousePos.y + camPos.y
-//     return rl.Vector2{worldX, worldY}
-// }
 
 getMousePositionInWorldMeters :: proc() -> box2d.Vec2 {
     mousePos := rl.GetMousePosition()

@@ -4,6 +4,7 @@ import "core:fmt"
 import "core:encoding/json"
 import "core:os"
 import "core:path/filepath"
+import rl "vendor:raylib"
 
 TiledPoint :: struct {
     x: f64, //X coordinate of the point
@@ -266,9 +267,136 @@ loadMapFromJsonFile :: proc (file_directory: string, file_name: string) -> ^Tile
 }
 
 
-main :: proc () {
-    file_directory := "resources/TileMaps"
-    file_name := "Level1.tmj"
-    tiled_map := loadMapFromJsonFile(file_directory, file_name)
-    fmt.print(tiled_map^)
+TileMapNode :: struct {
+    using node: Node,
+    tiled_map: ^TiledMap,
+    tiled_map_path: string,
+    tileset_textures: map[string]rl.Texture2D, // Map of firstgid to texture
+    resource_manager: ^ResourceManager,
 }
+
+
+createTileMapNode :: proc (tiled_map_path: string, resource_manager: ^ResourceManager) -> ^TileMapNode {
+    tile_map_node := new(TileMapNode)
+    setNodeDefaults(&tile_map_node.node, "TileMapNode")
+    tile_map_node.type = NodeType.TileMapNode
+    tile_map_node.tiled_map_path = tiled_map_path
+    tile_map_node.resource_manager = resource_manager
+
+    // Load the Tiled map
+    dir := filepath.dir(tiled_map_path)
+    file := filepath.base(tiled_map_path)
+    tile_map_node.tiled_map = loadMapFromJsonFile(dir, file)
+    if tile_map_node.tiled_map == nil {
+        fmt.println("Failed to load Tiled map from: ", tiled_map_path)
+        return nil
+    }
+
+    // Load tileset textures
+    for &tile_set in &tile_map_node.tiled_map.tilesets {
+        texture := resource_manager->loadTexture(filepath.join({dir, tile_set.image}))
+        tile_map_node.tileset_textures[tile_set.source] = texture
+    }
+
+    tile_map_node.draw = drawTileMapNode
+    for layer, layer_index in tile_map_node.tiled_map.layers {
+        if layer.type == "tilelayer" {
+            for chunk, chunk_index in layer.chunks {
+                for tile, tile_index in chunk.data {
+                    if tile == 0 {
+                        continue // Empty tile
+                    }
+                    s :[2]f32 = {f32(tile_map_node.tiled_map.tilewidth), f32(tile_map_node.tiled_map.tileheight)}
+                    pos := _getTilePosition(layer_index, chunk_index, u32(tile_index), tile_map_node.tiled_map)
+                    createStaticBodyBox2d(GAME.world_id, pos, s, 0)
+                }
+            }
+        }
+    }
+    return tile_map_node
+}
+
+_getChunkPosition :: proc (tiled_chunk: ^TiledChunk, tile_width: int, tile_height: int) -> [2]f32 {
+    x := tiled_chunk.x * tile_width
+    y := tiled_chunk.y * tile_height
+    return {f32(x), f32(y)}
+}
+
+_getTilePosition :: proc (layer_index: int, chunk_index: int, tile_index: u32, tile_map: ^TiledMap) -> [2]f32 {
+    chunk_position := _getChunkPosition(&tile_map.layers[layer_index].chunks[chunk_index], tile_map.tilewidth, tile_map.tileheight)
+    tiles_per_row := tile_map.layers[layer_index].chunks[chunk_index].width
+    local_position : [2]f32= {
+        f32((tile_index % u32(tiles_per_row)) * u32(tile_map.tilewidth)),
+        f32((tile_index / u32(tiles_per_row)) * u32(tile_map.tileheight))
+    }
+    return chunk_position + local_position
+}
+
+_getSourceTileRect :: proc (tile_id: u32, tile_set: ^TiledTileset) -> rl.Rectangle {
+    local_id := tile_id - u32(tile_set.firstgid)
+    tiles_per_row := tile_set.columns
+    x := f32((local_id % u32(tiles_per_row)) * u32(tile_set.tilewidth))
+    y := f32((local_id / u32(tiles_per_row)) * u32(tile_set.tileheight))
+    return rl.Rectangle{
+        x = x,
+        y = y,
+        width = f32(tile_set.tilewidth),
+        height = f32(tile_set.tileheight),
+    }
+}
+
+_getDestRect :: proc (tile_position: [2]f32, tile_set: ^TiledTileset) -> rl.Rectangle {
+    return rl.Rectangle{
+        x = tile_position[0],
+        y = tile_position[1],
+        width = f32(tile_set.tilewidth),
+        height = f32(tile_set.tileheight),
+    }
+}
+
+_getTileSetForTileID :: proc (tile_id: u32, tiled_map: ^TiledMap) -> ^TiledTileset {
+    for &tileset in &tiled_map.tilesets {
+        if tile_id >= u32(tileset.firstgid) && tile_id < u32(tileset.firstgid + tileset.tilecount) {
+            return &tileset
+        }
+    }
+    return nil
+}
+
+
+drawTileMapNode :: proc (tile_map_node_ptr: rawptr) {
+    tile_map_node: ^TileMapNode = cast(^TileMapNode)tile_map_node_ptr
+    tiled_map := tile_map_node.tiled_map
+    for layer, layer_index in &tiled_map.layers {
+        if layer.type != "tilelayer" || !layer.visible {
+            continue
+        }
+        for chunk, chunk_index in layer.chunks {
+            for tile_id, tile_index in chunk.data {
+                if tile_id == 0 {
+                    continue // Empty tile
+                }
+                
+                tile_set := _getTileSetForTileID(tile_id, tiled_map)
+                if tile_set == nil {
+                    continue // No tileset found
+                }
+                tile_set_texture := tile_map_node.tileset_textures[tile_set.source]
+                tile_position := _getTilePosition(layer_index, chunk_index, u32(tile_index), tiled_map)
+                source_rect := _getSourceTileRect(tile_id, tile_set)
+                dest_rect := _getDestRect(tile_position, tile_set)
+                rl.DrawTexturePro(
+                    tile_set_texture,
+                    source_rect,
+                    dest_rect,
+                    rl.Vector2{0, 0},
+                    0.0,
+                    rl.WHITE,
+                )
+            }
+        }
+    }
+}
+
+
+

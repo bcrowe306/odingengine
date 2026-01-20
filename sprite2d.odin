@@ -66,6 +66,7 @@ getSourceRect :: proc(sprite2d: ^Sprite2D) -> rl.Rectangle {
     return rl.Rectangle{frame_x, frame_y, frame_width, frame_height}
 }
 
+
 getDestRect :: proc(sprite2d: ^Sprite2D, source_rect: rl.Rectangle) -> rl.Rectangle {
     return rl.Rectangle{
         sprite2d.transform.global_pos.x + sprite2d.texture.offset.x,

@@ -7,9 +7,17 @@
     "expandedProjectPaths": [
     ],
     "fileStates": {
+        "HighForestTiles.tsj": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "HighForestTiles.tsx": {
+            "scaleInEditor": 1
+        }
     },
-    "last.exportedFilePath": "/Users/brandoncrowe/Documents/Git/odingengine/resources/TileMaps",
+    "last.exportedFilePath": "/Users/bcrowe/Git/new_odin/resources/TileMaps",
     "last.imagePath": "/Users/brandoncrowe/Documents/Git/odingengine/resources/TileMaps",
+    "last.objectTemplatePath": "/Users/bcrowe/Git/new_odin/resources/TileMaps",
     "lastUsedTilesetExportFilter": "JSON tileset files (*.tsj *.json)",
     "map.fixedSize": false,
     "map.lastUsedExportFilter": "JSON map files (*.tmj *.json)",
@@ -20,6 +28,8 @@
     ],
     "project": "odin.tiled-project",
     "recentFiles": [
+        "HighForestTiles.tsx",
+        "HighForestTiles.tsj"
     ],
     "tileset.lastUsedFormat": "tsx",
     "tileset.tileSize": {

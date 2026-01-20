@@ -113,3 +113,23 @@ createFloorBody :: proc(world_id: box2d.WorldId, name: string = "FloorBody", pos
     addCollisionShape(cast(^PhysicsBody)floorBody, cast(^CollisionShape)floorShape)
     GAME.node_manager->addChild(getRoot(GAME), cast(rawptr)floorBody)
 }
+
+
+createStaticBodyBox2d :: proc(world_id: box2d.WorldId, position: rl.Vector2, size: rl.Vector2, rotation: f32 = 0.0) -> box2d.BodyId {
+    using box2d
+    act_pos := box2d.Vec2{pixelToMeter(position.x + (size.x / 2.0)), pixelToMeter(position.y + (size.y / 2.0))}
+    bodyDef := DefaultBodyDef()
+    bodyDef.type = BodyType.staticBody
+    bodyDef.position = act_pos
+    bodyDef.rotation = box2d.MakeRot(math.to_radians_f32(rotation))
+    body_id := CreateBody(world_id, bodyDef)
+
+    shapeDef := box2d.DefaultShapeDef()
+    shapeDef.isSensor = false
+    halfWidth := pixelToMeter(size.x / 2.0)
+    halfHeight := pixelToMeter(size.y / 2.0)
+    poly := MakeBox(halfWidth, halfHeight)
+
+    shape_id := box2d.CreatePolygonShape(body_id, shapeDef, poly)
+    return body_id
+}

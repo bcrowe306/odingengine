@@ -51,23 +51,9 @@ main :: proc() {
     GAME.node_manager->addChild(root, player)
     GAME.node_manager->addChild(root, player_text)
 
-    createFloorBody(GAME.world_id, "FloorBody", rl.Vector2{750, 200}, rl.Vector2{300, 40}, -30.0)
-    createFloorBody(GAME.world_id, "FloorBody", rl.Vector2{300, 400}, rl.Vector2{400, 40}, 15.0)
-    createFloorBody(GAME.world_id, "FloorBody", rl.Vector2{640, 668}, rl.Vector2{1260, 100})
-
-    floorBody := createStaticBody(GAME.world_id, "FloorBody", rl.Vector2{640, 668})
-    GAME.node_manager->addNode(cast(rawptr)floorBody)
-    floorShape := createRectangleCollisionShape(GAME.world_id, floorBody.body_id, rl.Vector2{1260, 100})
-    GAME.node_manager->addNode(cast(rawptr)floorShape)
-    addCollisionShape(cast(^PhysicsBody)floorBody, cast(^CollisionShape)floorShape)
-    GAME.node_manager->addChild(root, cast(rawptr)floorBody)
-
-    rockBody := createDynamicBody(GAME.world_id, "RockBody", rl.Vector2{800, 100})
-    GAME.node_manager->addNode(cast(rawptr)rockBody)
-    rockShape := createCircleCollisionShape(GAME.world_id, rockBody.body_id, 20.0)
-    GAME.node_manager->addNode(cast(rawptr)rockShape)
-    addCollisionShape(cast(^PhysicsBody)rockBody, cast(^CollisionShape)rockShape)
-    GAME.node_manager->addChild(root, cast(rawptr)rockBody)
+    tilemap := createTileMapNode("resources/TileMaps/Level1.tmj", GAME.resource_manager)
+    GAME.node_manager->addNode(cast(rawptr)tilemap)
+    GAME.node_manager->addChild(root, tilemap)
 
     signalConnect(&t1.on_timeout, proc(tn: ^TimerNode, args: ..any) {
         pt := getNode(tn, "../TitleText")
