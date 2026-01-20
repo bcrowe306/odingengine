@@ -5,6 +5,8 @@ import rl "vendor:raylib"
 import fmt "core:fmt"
 
 // TODO: Clean up node methods, signals, and function pointers
+// TODO: Test node lifecycle methods (initialize, enter_tree, ready, process, draw, exit_tree)
+// FIXME: Current deletion of nodes causes occasional crashes due to dangling pointers in children arrays. Make sure deletion is safe and correct order.
 
 NODE_ID_COUNTER : u64 = 1
 NodeType:: enum {
@@ -214,7 +216,6 @@ createNode :: proc(name: string = "") -> ^Node {
 
 
 
-// TODO: Implement transform hierarchy properly
 getGlobalTransform :: proc(node: ^Node) -> TransformComponent {
     transform := node.transform
     current := node.parent

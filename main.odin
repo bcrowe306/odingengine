@@ -1,10 +1,17 @@
 package main
 
 import "core:math/rand"
-import "vendor:box2d"
 import rl "vendor:raylib"
 import fmt "core:fmt"
 import "core:mem"
+
+
+// TODO: Camera2D Node implementation
+// TODO: Implement parallax backgrounds
+// TODO: Implement game states (menu, pause, gameplay, etc.)
+// TODO: Add more node types (ParticleSystem, Light2D, etc.)
+// TODO: StateMachine 
+// TODO: Add UI nodes to system (buttons, panels, etc.)
 
 // Create the main game object as a global variable
 GAME := createGameObject("Oding Engine Test Game", target_fps=120)

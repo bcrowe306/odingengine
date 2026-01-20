@@ -2,7 +2,6 @@ package main
 import fmt "core:fmt"
 
 
-// TODO: Change processing logic from node to node manager
 
 NodeIndex :: distinct int
 NodeID ::  distinct int

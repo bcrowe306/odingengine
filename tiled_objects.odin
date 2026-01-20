@@ -6,6 +6,11 @@ import "core:os"
 import "core:path/filepath"
 import rl "vendor:raylib"
 
+
+// TODO: Add support for more Tiled features (object layers, tile properties, etc.)
+// TODO: Use Tiled objects for collision shapes in Box2D. Need to use object properties to define shape types.
+// TODO: Make use of Tiled layers and render them in order.
+
 TiledPoint :: struct {
     x: f64, //X coordinate of the point
     y: f64, //Y coordinate of the point

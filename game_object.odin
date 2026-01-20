@@ -182,6 +182,7 @@ physics :: proc(go: ^GameObject, delta: f32) {
     box2d.World_Step(go.world_id, delta, i32(go.physics_settings.substep_count))
 }
 
+// TODO: Consider multithreaded processing and drawing of nodes
 update :: proc(go: ^GameObject, root: ^Node, delta: f32, update_func: proc(go: ^GameObject, root: ^Node, delta_time: f32)) {
     using go
     prof_frame_part()
@@ -192,6 +193,7 @@ update :: proc(go: ^GameObject, root: ^Node, delta: f32, update_func: proc(go: ^
     }
 }
 
+// TODO: Implement rendering features optimizations (culling, layers, etc.)
 drawNodes :: proc(go: ^GameObject) {
     prof_frame_part()
     go.node_manager->_drawRootTree()
