@@ -20,7 +20,7 @@ TiledProperty :: struct {
     name: string, // Name of the property
     type: string, // Type of the property (string (default), int, float, bool, color, file, object or class (since 0.16, with color and file added in 0.17, object added in 1.4 and class added in 1.8))
     propertytype: string, // Name of the custom property type, when applicable (since 1.8)
-    value: any, // Value of the property 
+    value: string, // Value of the property 
 }
 
 TiledObject :: struct {
@@ -304,17 +304,10 @@ createTileMapNode :: proc (tiled_map_path: string, resource_manager: ^ResourceMa
     }
 
     tile_map_node.draw = drawTileMapNode
-    for layer, layer_index in tile_map_node.tiled_map.layers {
-        if layer.type == "tilelayer" {
-            for chunk, chunk_index in layer.chunks {
-                for tile, tile_index in chunk.data {
-                    if tile == 0 {
-                        continue // Empty tile
-                    }
-                    s :[2]f32 = {f32(tile_map_node.tiled_map.tilewidth), f32(tile_map_node.tiled_map.tileheight)}
-                    pos := _getTilePosition(layer_index, chunk_index, u32(tile_index), tile_map_node.tiled_map)
-                    createStaticBodyBox2d(GAME.world_id, pos, s, 0)
-                }
+    for &layer in &tile_map_node.tiled_map.layers {
+        if layer.type == "objectgroup" && layer.name == "CollisionLayer" {
+            for &object in &layer.objects {
+                createStaticBodyBox2d(GAME.world_id, rl.Vector2{f32(object.x), f32(object.y)}, rl.Vector2{f32(object.width), f32(object.height)}, 0.0)
             }
         }
     }

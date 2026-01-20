@@ -50,7 +50,7 @@ GameObject :: struct {
     // Core Objects
 
     actions_manager: ^ActionsManager,
-    layer_manager: LayerManager,
+    layer_manager: ^LayerManager,
     resource_manager: ^ResourceManager,
     physics_settings: PhysicsSettings,
     node_manager: ^NodeManager,
@@ -90,7 +90,7 @@ createGameObject :: proc (title: string, window_size: rl.Vector2 = rl.Vector2{12
     game_obj.actions_manager = createActionsManager()
     game_obj.layer_manager = layerManagerConstruct()
     game_obj.resource_manager = createResourceManager()
-    game_obj.node_manager = constructNodeManager()
+    game_obj.node_manager = constructNodeManager(game_obj.layer_manager)
     game_obj.physics_settings = PhysicsSettings{
         worker_threads = 4,
         gravity = box2d.Vec2{0.0, 9.8},
@@ -130,9 +130,7 @@ initializeGameObject :: proc (go: ^GameObject) {
 }
 
 setRoot :: proc (go: ^GameObject, root: NodeIndentifier) {
-    // Process add/remove queues
-    go.node_manager->_processNodeQueues()
-    go.node_manager->_processRelationships()
+    
     go.node_manager->setRootNode(root)
 }
 
@@ -146,7 +144,7 @@ drawStats :: proc(go: ^GameObject, draw_nodes: bool = false) {
     rl.DrawFPS(10, 10)
     rl.DrawText(fmt.ctprint(fmt.tprintf("Nodes Array Size: %d", len(go.node_manager._nodes))), 10, 30, 15, rl.GREEN)
     rl.DrawText(fmt.ctprint(fmt.tprintf("Process_Nodes: %d", len(go.node_manager.nodesToProcess))), 10, 50, 15, rl.GREEN)
-    rl.DrawText(fmt.ctprint(fmt.tprintf("Draw_Nodes: %d", len(go.node_manager.nodesToDraw))), 10, 70, 15, rl.GREEN)
+    rl.DrawText(fmt.ctprint(fmt.tprintf("Draw_Nodes: %d", len(go.layer_manager.layer_nodes_sorted))), 10, 70, 15, rl.GREEN)
     rl.DrawText(fmt.ctprint(fmt.tprintf("Total Tree Nodes: %d", root_node->getNodeCount())), 10, 90, 15, rl.GREEN)
     rl.DrawText(fmt.ctprint(fmt.tprintf("Child Add Queue: %d", len(go.node_manager._addChildQueue))), 10, 110, 15, rl.GREEN)
     rl.DrawText(fmt.ctprint(fmt.tprintf("Child Remove Queue: %d", len(go.node_manager._removeChildQueue))), 10, 130, 15, rl.GREEN)
@@ -175,6 +173,15 @@ queues :: proc(go: ^GameObject) {
     prof_frame_part()
     go.node_manager->_processNodeQueues()
     go.node_manager->_processRelationships()
+
+    if go.node_manager._next_root_node != cast(NodeIndex)-1 {
+        _doSetRootNode(go.node_manager, go.node_manager._next_root_node)
+    }
+
+    if go.node_manager._change_tree_next_frame {
+        go.node_manager->updateTree()
+    }
+    go.layer_manager->processNodeChanges(go.node_manager)
 }
 
 physics :: proc(go: ^GameObject, delta: f32) {
@@ -196,7 +203,7 @@ update :: proc(go: ^GameObject, root: ^Node, delta: f32, update_func: proc(go: ^
 // TODO: Implement rendering features optimizations (culling, layers, etc.)
 drawNodes :: proc(go: ^GameObject) {
     prof_frame_part()
-    go.node_manager->_drawRootTree()
+    go.layer_manager->draw_nodes(go.node_manager)
     if go.draw_stats {
         drawStats(go)
     }

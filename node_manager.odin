@@ -49,6 +49,9 @@ NodeManager :: struct {
     // Lists of node indices for processing
     nodesToProcess: [dynamic]NodeIndex,
 
+    // Pointer to layer_manager
+    layer_manager: ^LayerManager,
+
     // ------ Internal Use Only -----------
 
     // All nodes in the game object
@@ -61,7 +64,7 @@ NodeManager :: struct {
     _next_root_node: NodeIndentifier,
 
     // Flag to indicate root node change next frame
-    _change_root_next_frame: bool,
+    _change_tree_next_frame: bool,
 
     // Queue for adding nodes. Proccessed internally at the start of each frame for safe addition.
     _nodeAddQueue: [dynamic]rawptr,
@@ -128,8 +131,6 @@ NodeManager :: struct {
     // Process root tree. This runs each frame and calls the process proc on each node in the tree.
     _proccessRootTree: proc(nm: ^NodeManager, delta: f32),
 
-    // Draw root tree. This runs each frame and calls the draw proc on each node in the tree.
-    _drawRootTree: proc(nm: ^NodeManager),
 
     // Update the draw and process lists for the current root node
     _updateLists: proc (nm: ^NodeManager),
@@ -137,10 +138,13 @@ NodeManager :: struct {
     // True is the node_manager is currently in game loop
     _is_in_game_loop: bool,
 
+    // Update the node tree if there are changes
+    updateTree: proc (nm: ^NodeManager),
+
 }
 
 // Constructs a new NodeManager with default values
-constructNodeManager :: proc() -> ^NodeManager {
+constructNodeManager :: proc(layer_manager: ^LayerManager) -> ^NodeManager {
     manager := new(NodeManager)
     manager._nodes = make([dynamic]rawptr, 0)
     manager._node_id_counter = 0
@@ -164,15 +168,16 @@ constructNodeManager :: proc() -> ^NodeManager {
     manager._addNodeToProcessList = _addNodeToProcessList
     manager._removeNodeFromProcessList = _removeNodeFromProcessList
     manager._next_root_node = cast(NodeIndex)-1
-    manager._change_root_next_frame = false
+    manager._change_tree_next_frame = false
     manager._updateLists = _updateLists
     manager.setRootNode = setRootNode
     manager.getNodeByName = getNodeByName
     manager._proccessRootTree = _proccessRootTree
-    manager._drawRootTree = _drawRootTree
     manager._initializeNodes = _initializeNodes
     manager._is_in_game_loop = false
     manager._getFreePoolCount = _getFreePoolCount
+    manager.updateTree = updateTree
+    manager.layer_manager = layer_manager
     return manager
 }
 
@@ -208,7 +213,7 @@ removeNode :: proc(this: ^NodeManager, node_ptr: rawptr) {
         fmt.printfln("Node not found in NodeManager")
         return
     }
-    append(&this._nodeRemoveQueue, node_ptr)
+
     for child_index in node.children {
         child_ptr := this->getNodeByIndex(child_index)
         child_node := cast(^Node)child_ptr
@@ -216,6 +221,9 @@ removeNode :: proc(this: ^NodeManager, node_ptr: rawptr) {
             this->removeNode(cast(rawptr)child_node)
         }
     }
+
+    append(&this._nodeRemoveQueue, node_ptr)
+    
     if !this._is_in_game_loop {
         this->_processNodeQueues()
     }
@@ -252,6 +260,7 @@ addChild :: proc(nm: ^NodeManager, parent_ptr: rawptr, child_ptr: rawptr) {
     if !nm._is_in_game_loop {
         nm->_processRelationships()
     }
+    nm._change_tree_next_frame = true
 }
 
 /*
@@ -289,9 +298,13 @@ removeChild :: proc(node_manager: ^NodeManager, parent_ptr: rawptr, child_ptr: r
 
 setRootNode :: proc(nm: ^NodeManager, index_or_id: NodeIndentifier) {
     nm._next_root_node = index_or_id
-    nm._change_root_next_frame = true
-    if !nm._is_in_game_loop {
-        _doSetRootNode(nm, index_or_id)
+    nm._change_tree_next_frame = true
+}
+
+updateTree :: proc (nm: ^NodeManager) {
+    if nm._change_tree_next_frame {
+        _updateLists(nm)
+        nm._change_tree_next_frame = false
     }
 }
 
@@ -302,41 +315,51 @@ _doSetRootNode :: proc(nm: ^NodeManager, index_or_id: NodeIndentifier) {
         index := nm->getNodeIndex(v)
         if index == cast(NodeIndex)-1 {
             fmt.printfln("Cannot set root node. NodeID %d not found", v)
-            nm._change_root_next_frame = false
+            nm._change_tree_next_frame = false
             nm._next_root_node = cast(NodeIndex)-1
             return
         }
         nm._root_node = index
-        nm._change_root_next_frame = false
         nm._next_root_node = cast(NodeIndex)-1
 
     case NodeIndex:
         if v < 0 || v >= cast(NodeIndex)len(nm._nodes) {
             fmt.printfln("Cannot set root node. NodeIndex %d out of bounds", v)
-            nm._change_root_next_frame = false
+            nm._change_tree_next_frame = false
             nm._next_root_node = cast(NodeIndex)-1
             return
         }
         nm._root_node = v
-        nm._change_root_next_frame = false
         nm._next_root_node = cast(NodeIndex)-1
+        
     }
-    _updateLists(nm)
 }
 
 // Update the draw and process lists for the current root node
 _updateLists :: proc (nm: ^NodeManager) {
-    clear(&nm.nodesToDraw)
+    nm.layer_manager->clearLayerNodes()
     clear(&nm.nodesToProcess)
     traverseForLists :: proc (nm: ^NodeManager, node_index: NodeIndex) {
         node_ptr := nm->getNodeByIndex(node_index)
         n := cast(^Node)node_ptr
         if n.draw != nil {
-            append(&nm.nodesToDraw, node_index)
+            // append(&nm.nodesToDraw, node_index). - Old way
+            nm.layer_manager->addLayerNode(n.layer, node_index)
         }
         if n.process != nil {
             append(&nm.nodesToProcess, node_index)
         }
+        
+        if n.enter_tree != nil && !n.is_in_tree {
+            n.enter_tree(cast(rawptr)n)
+            n.is_in_tree = true
+        }
+
+        if n.ready != nil && !n.is_ready {
+            n.ready(cast(rawptr)n)
+            n.is_ready = true
+        }
+
         for child_index in n.children {
             traverseForLists(nm, child_index)
         }
@@ -362,6 +385,8 @@ _clearNodeRelationships :: proc(this: ^NodeManager, node_ptr: rawptr) {
         child_node := cast(^Node)this._nodes[child_index]
         if child_node != nil {
             if node.exit_tree != nil {
+                node.is_in_tree = false
+                node.is_ready = false
                 node.exit_tree(cast(rawptr)child_node)
             }
             child_node.parent = -1
@@ -403,9 +428,6 @@ _addIndexToPool :: proc(this: ^NodeManager, index: NodeIndex) {
     }
     append(&this._nodePool, index)
 }
-
-
-
 
 // Get index of node by its ID. Returns -1 if not found.
 getNodeIndex :: proc(this: ^NodeManager, node_id: NodeID) -> NodeIndex {
@@ -529,13 +551,10 @@ _doNodeRemoval :: proc(this: ^NodeManager, index: NodeIndex) {
         return
     }
     _clearNodeRelationships(this, cast(rawptr)node)
-    // Remove from draw list if present
-    for node_index, i in this.nodesToDraw {
-        if node_index == index {
-            ordered_remove(&this.nodesToDraw, i)
-            break
-        }
-    }
+
+    this.layer_manager->removeLayerNode(index)
+
+
     // Remove from process list if present
     for node_index, i in this.nodesToProcess {
         if node_index == index {
@@ -543,6 +562,7 @@ _doNodeRemoval :: proc(this: ^NodeManager, index: NodeIndex) {
             break
         }
     }
+
     // Set nodes[index] to nil or a placeholder'
     this._nodes[index] = nil
     
@@ -575,23 +595,6 @@ _processRelationships :: proc(nm: ^NodeManager) {
                 child_node.initialize(cast(rawptr)child_node)
             }
             child_node.is_initialized = true
-        }
-        if child_node.process != nil {
-            nm->_addNodeToProcessList(parent_index, child_index)
-        }
-        if child_node.draw != nil {
-            nm->_addNodeToDrawList(parent_index, child_index)
-        }
-        
-        if child_node.enter_tree != nil {
-            // TODO: Async enter tree calls?
-            // TODO: Consider depth-first vs breadth-first enter tree calls
-            // TODO: Handle enter tree for children as well?
-            child_node.enter_tree(cast(rawptr)child_node)
-        }
-
-        if child_node.ready != nil {
-            child_node.ready(cast(rawptr)child_node)
         }
     }
     // Clear add queue after processing
@@ -703,21 +706,6 @@ _proccessRootTree :: proc(nm: ^NodeManager, delta: f32) {
         node->globalTransform()
         if node != nil && node.process != nil {
             node.process(cast(rawptr)node, delta)
-        }
-    }
-}
-
-// Draw root tree. This runs each frame and calls the draw proc on each node in the tree.
-_drawRootTree :: proc(nm: ^NodeManager) {
-
-    for node_index in &nm.nodesToDraw {
-        node_ptr := nm->getNodeByIndex(node_index)
-        node := cast(^Node)node_ptr
-
-        // Update global transform
-        node->globalTransform()
-        if node != nil && node.draw != nil {
-            node.draw(cast(rawptr)node)
         }
     }
 }

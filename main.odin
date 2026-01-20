@@ -17,9 +17,42 @@ import "core:mem"
 GAME := createGameObject("Oding Engine Test Game", target_fps=120)
 TRACK: mem.Tracking_Allocator
 
+testNode :: proc(name: string = "TestNode") -> ^Node {
+    test_node := createNode(name)
+    test_node.initialize = proc(node_ptr: rawptr) {
+        node := cast(^Node)node_ptr
+        fmt.println("Initializing node: ", node.name)
+    }
+    test_node.enter_tree = proc(node: rawptr) {
+        n := cast(^Node)node
+        fmt.println("Entering tree: ", n.name)
+    }
+    test_node.ready = proc(node_ptr: rawptr) {
+        node := cast(^Node)node_ptr
+        fmt.println("Node ready: ", node.name)
+    }
+    test_node.process = proc(node_ptr: rawptr, delta: f32) {
+        node := cast(^Node)node_ptr
+        if rl.IsKeyPressed(rl.KeyboardKey.SPACE) {
+            fmt.println("Space key pressed! Removing node: ", node.name)
+            node.nodeManager->removeNode(cast(rawptr)node)
+        }
+    }
+    test_node.draw = proc(node_ptr: rawptr) {
+        node := cast(^Node)node_ptr
+    }
+    test_node.exit_tree = proc(node_ptr: rawptr) {
+        node := cast(^Node)node_ptr
+        fmt.println("Exiting tree for node: ", node.name)
+    }
+    return test_node
+
+}
+
 
 
 main :: proc() {
+    // Memory tracking setup
     when ODIN_DEBUG {
 		mem.tracking_allocator_init(&TRACK, context.allocator)
 		context.allocator = mem.tracking_allocator(&TRACK)
@@ -28,6 +61,7 @@ main :: proc() {
 			mem.tracking_allocator_destroy(&TRACK)
 		}
 	}
+
     // Profiling setup
     prof_init()
 	defer prof_deinit()
@@ -37,41 +71,15 @@ main :: proc() {
     // Create root node and other game nodes
     root := createNode("Root")
     root_id := GAME.node_manager->addNode(cast(rawptr)root)
-    player := createCharacterMover("Player")
-    GAME.node_manager->addNode(cast(rawptr)player)
-    t1 := createTimerNode("MainTimer", 1.0, true, true)
-    GAME.node_manager->addNode(cast(rawptr)t1)
-    audio_player := createAudioPlayer(GAME.resource_manager, "TestAudioPlayer", "resources/COINS Collect Chime 01.ogg")
-    GAME.node_manager->addNode(cast(rawptr)audio_player)
-    player_text := createText2D(GAME.resource_manager, "TitleText", "Test", "open_sans", 18, rl.YELLOW)
-    GAME.node_manager->addNode(cast(rawptr)player_text)
-    boarWarrior := createAnimatedSprite2D(GAME.resource_manager, "BoarWarrior")
-    GAME.node_manager->addNode(cast(rawptr)boarWarrior)
-   
-    createAnimation(boarWarrior, "Idle", "resources/Legacy Enemy - Boar Warrior/Idle/Idle-Sheet-White.png", 4, 1, 6, true, true)
-    createAnimation(boarWarrior, "Walk", "resources/Legacy Enemy - Boar Warrior/Walk/Walk-Sheet-White.png", 8, 1, 12, true, true)
-
-    GAME.node_manager->addChild(player, boarWarrior)
-    GAME.node_manager->addChild(player, audio_player)
-    GAME.node_manager->addChild(player, audio_player)
-    GAME.node_manager->addChild(root, t1)
-    GAME.node_manager->addChild(root, player)
-    GAME.node_manager->addChild(root, player_text)
 
     tilemap := createTileMapNode("resources/TileMaps/Level1.tmj", GAME.resource_manager)
     GAME.node_manager->addNode(cast(rawptr)tilemap)
-    GAME.node_manager->addChild(root, tilemap)
+    GAME.node_manager->addChild(root, cast(rawptr)tilemap)
 
-    signalConnect(&t1.on_timeout, proc(tn: ^TimerNode, args: ..any) {
-        pt := getNode(tn, "../TitleText")
-        if pt != nil {
-            text_node := cast(^Text2D)pt
-            text_node.text = fmt.tprintf("Timer Count: %d", tn.timeout_count)
-        }
-    })
-
-    // Initialize game and root node
+    // Initialize nodes
     GAME.node_manager->_initializeNodes()
+
+    // Set root node
     GAME->setRoot(  root_id)
 
 
@@ -83,6 +91,9 @@ main :: proc() {
 
             createRock(rl.GetMousePosition(), color)
             
+        }
+        if rl.IsKeyPressed(rl.KeyboardKey.V) {
+            GAME.layer_manager->setLayerVisibility(PARALLAX_LAYER_1, !GAME.layer_manager->getLayerVisibility(PARALLAX_LAYER_1))
         }
         
     })

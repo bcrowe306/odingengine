@@ -4,9 +4,6 @@ import "core:strings"
 import rl "vendor:raylib"
 import fmt "core:fmt"
 
-// TODO: Clean up node methods, signals, and function pointers
-// TODO: Test node lifecycle methods (initialize, enter_tree, ready, process, draw, exit_tree)
-// FIXME: Current deletion of nodes causes occasional crashes due to dangling pointers in children arrays. Make sure deletion is safe and correct order.
 
 NODE_ID_COUNTER : u64 = 1
 NodeType:: enum {
@@ -33,7 +30,9 @@ Node :: struct {
     children: [dynamic]NodeIndex,
     nodeManager: ^NodeManager,
     is_initialized: bool,
-    layer: string,
+    is_in_tree: bool,
+    is_ready: bool,
+    layer: LayerZIndex,
 
     initialize: proc(node_ptr: rawptr),
     enter_tree: proc(node: rawptr),
@@ -53,7 +52,12 @@ Node :: struct {
 }
 
 setNodeDefaults :: proc(node: ^Node, name: string = "") {
-    node.layer = BACKGROUND_LAYER
+    if name == "" {
+        setGenericName(node)
+    } else {
+        node.name = name
+    }
+    node.layer = 0
     node.visible = true
     node.enabled = true
     node.is_initialized = false
@@ -245,36 +249,6 @@ updateNodes :: proc(node: ^Node, delta: f32) {
 
 renderNodes :: proc(node: ^Node, layer_name: string) {
     
-}
-
-
-
-RectNode :: struct {
-    using node: Node,
-    position: rl.Vector2,
-    size: rl.Vector2,
-    color: rl.Color,
-}
-
-createRectNode :: proc(name: string = "") -> ^RectNode {
-    node := new(RectNode)
-    setNodeDefaults(cast(^Node)node, name)
-    node.type = NodeType.Rectangle
-    node.size = rl.Vector2{50.0, 50.0}
-    node.color = rl.RED
-    node.draw = drawRectNode
-    node.ready = rectReady
-    return node
-}
-rectReady :: proc(node_ptr: rawptr) {
-    node := cast(^RectNode)node_ptr
-    signalEmit(&node.on_ready, cast(^Node)node)
-}
-drawRectNode :: proc(node_ptr: rawptr) {
-    node := cast(^RectNode)node_ptr
-    // Draw rectangle
-    rl.DrawRectangleV(node.transform.global_pos , node.size, node.color)
-
 }
 
 
