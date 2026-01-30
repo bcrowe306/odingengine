@@ -46,7 +46,6 @@ LayerManager :: struct {
     setLayerVisibility: proc(manager: ^LayerManager, z_index: LayerZIndex, visible: bool),
     getLayerVisibility: proc(manager: ^LayerManager, z_index: LayerZIndex) -> bool,
 
-
 }
 
 layerManagerConstruct :: proc() -> ^LayerManager {

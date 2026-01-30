@@ -65,6 +65,7 @@ createCircleCollisionShape :: proc(world_id: box2d.WorldId, body_id: box2d.BodyI
     using box2d
     shapeDef := DefaultShapeDef()
     shapeDef.isSensor = false
+    shapeDef.density = 5.0
     circle := box2d.Circle{ radius = pixelToMeter(radius), center = box2d.Vec2{0,0} }
     cs := new(CircleCollisionShape)
     setNodeDefaults(cast(^Node)cs, "CircleCollisionShape")

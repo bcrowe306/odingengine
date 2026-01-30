@@ -7,10 +7,12 @@ import fmt "core:fmt"
 import math "core:math"
 
 FilterCategory :: enum u64 {
+    None = 0,
     StaticBody = 1 << 30,
     Movers = 1 << 31,
     DynamicBody = 1 << 32,
     KinematicBody = 1 << 33,
+    AllBits = 0xFFFFFFFFFFFFFFFF,
 }
 
 
@@ -128,14 +130,14 @@ createStaticBodyBox2d :: proc(world_id: box2d.WorldId, position: rl.Vector2, siz
     act_pos := box2d.Vec2{pixelToMeter(position.x + (size.x / 2.0)), pixelToMeter(position.y + (size.y / 2.0))}
     bodyDef := DefaultBodyDef()
     bodyDef.type = BodyType.staticBody
-    bodyDef.position = act_pos
     bodyDef.rotation = box2d.MakeRot(math.to_radians_f32(rotation))
+    bodyDef.position = act_pos
     body_id := CreateBody(world_id, bodyDef)
 
     shapeDef := box2d.DefaultShapeDef()
     shapeDef.filter = box2d.Filter{
         categoryBits = u64(FilterCategory.StaticBody),
-        maskBits = u64(FilterCategory.Movers) | u64(FilterCategory.DynamicBody) | u64(FilterCategory.KinematicBody),
+        maskBits = u64(FilterCategory.AllBits),
     }
     shapeDef.isSensor = false
     halfWidth := pixelToMeter(size.x / 2.0)

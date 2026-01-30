@@ -14,7 +14,10 @@ NodeType:: enum {
     Text2D,
     AudioPlayer,
     CharacterMover,
+    CharacterBody,
     TileMapNode,
+    ParticleNode,
+    CameraNode,
 }
 nodeDrawSignature :: proc(node_ptr: rawptr)
 nodeProcessSignature :: proc(node_ptr: rawptr, delta: f32)
@@ -39,10 +42,12 @@ Node :: struct {
     ready: proc(node_ptr: rawptr),
     process: proc(node_ptr: rawptr, delta: f32),
     draw: proc(node_ptr: rawptr),
+    draw_debug: proc(node_ptr: rawptr),
     exit_tree: proc(node: rawptr),
     globalTransform: proc(node: ^Node) -> TransformComponent,
 
     transform: TransformComponent,
+    debug: bool,
     visible: bool,
     enabled: bool,
     on_ready: Signal(^Node),
@@ -72,6 +77,7 @@ setNodeDefaults :: proc(node: ^Node, name: string = "") {
     node.getNodeCount = getNodeCount
 
 }
+
 getNewNodeID :: proc() -> u64 {
     id := NODE_ID_COUNTER
     NODE_ID_COUNTER += 1
@@ -97,6 +103,13 @@ getNodeCount :: proc(node: ^Node) -> i32 {
     }
     countChildren(node, &count)
     return count
+}
+
+getParentNode :: proc(node: ^Node) -> rawptr {
+    if node.parent == cast(NodeIndex)-1 {
+        return nil
+    }
+    return node.nodeManager->getNodeByIndex(node.parent)
 }
 
 getRootNode :: proc(node: ^Node) -> ^Node {

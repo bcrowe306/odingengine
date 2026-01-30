@@ -20,6 +20,16 @@ meterToPixel :: proc(m: f32) -> f32 {
     return m * (CHARACTER_SIZE / CHARACTER_METERS)
 }
 
+pixelToMeterVec2 :: proc(v: rl.Vector2) -> box2d.Vec2 {
+    return v / (CHARACTER_SIZE / CHARACTER_METERS)
+}
+
+meterToPixelVec2 :: proc(v: box2d.Vec2) -> rl.Vector2 {
+    return v * PIXELTOMETER_SCALE
+}
+
+
+
 
 getMousePositionInWorldMeters :: proc() -> box2d.Vec2 {
     mousePos := rl.GetMousePosition()
@@ -47,6 +57,8 @@ GameObject :: struct {
     background_color: rl.Color,
     target_fps: i32,
     world_id: box2d.WorldId,
+    camera: ^rl.Camera2D,
+
     // Core Objects
 
     actions_manager: ^ActionsManager,
@@ -82,10 +94,11 @@ createGameObject :: proc (title: string, window_size: rl.Vector2 = rl.Vector2{12
     game_obj := new(GameObject)
     game_obj.window_size = window_size
     game_obj.window_resizable = true
-    game_obj.window_vsync = true
+    game_obj.window_vsync = false
     game_obj.window_transparent = false
     game_obj.title = title
     game_obj.background_color = background_color
+    game_obj.camera = nil
     game_obj.target_fps = target_fps
     game_obj.actions_manager = createActionsManager()
     game_obj.layer_manager = layerManagerConstruct()
@@ -203,9 +216,18 @@ update :: proc(go: ^GameObject, root: ^Node, delta: f32, update_func: proc(go: ^
 // TODO: Implement rendering features optimizations (culling, layers, etc.)
 drawNodes :: proc(go: ^GameObject) {
     prof_frame_part()
+
+    if go.camera != nil {
+        rl.BeginMode2D(go.camera^)
+    }
+
     go.layer_manager->draw_nodes(go.node_manager)
     if go.draw_stats {
         drawStats(go)
+    }
+
+    if go.camera != nil {
+        rl.EndMode2D()
     }
 }
 
@@ -213,8 +235,10 @@ run :: proc (go: ^GameObject, root: ^Node, update_func: proc(go: ^GameObject, ro
     using go
     for !rl.WindowShouldClose() {
         {
+            
             prof_frame()
             rl.BeginTextureMode(go.render_target)
+            
             
             queues(go)
 

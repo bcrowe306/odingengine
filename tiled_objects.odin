@@ -309,7 +309,7 @@ createTileMapNode :: proc (tiled_map_path: string, resource_manager: ^ResourceMa
     for &layer in &tile_map_node.tiled_map.layers {
         if layer.type == "objectgroup" && layer.name == "CollisionLayer" {
             for &object in &layer.objects {
-                createStaticBodyBox2d(GAME.world_id, rl.Vector2{f32(object.x), f32(object.y)}, rl.Vector2{f32(object.width), f32(object.height)}, 0.0)
+                createStaticBodyBox2d(GAME.world_id, rl.Vector2{f32(object.x), f32(object.y)}, rl.Vector2{f32(object.width), f32(object.height)}, f32(object.rotation))
             }
         }
     }

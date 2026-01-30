@@ -141,6 +141,9 @@ NodeManager :: struct {
     // Update the node tree if there are changes
     updateTree: proc (nm: ^NodeManager),
 
+    // Cache for name to index lookups
+    _name_to_index_cache: map[string]NodeIndex,
+
 }
 
 // Constructs a new NodeManager with default values
@@ -343,7 +346,6 @@ _updateLists :: proc (nm: ^NodeManager) {
         node_ptr := nm->getNodeByIndex(node_index)
         n := cast(^Node)node_ptr
         if n.draw != nil {
-            // append(&nm.nodesToDraw, node_index). - Old way
             nm.layer_manager->addLayerNode(n.layer, node_index)
         }
         if n.process != nil {
@@ -444,6 +446,33 @@ getNodeIndex :: proc(this: ^NodeManager, node_id: NodeID) -> NodeIndex {
    return -1
 }
 
+// Get node by name. Returns the first match found, or nil if not found.
+getNodeByName :: proc(this: ^NodeManager, name: string) -> rawptr {
+
+    // Check cache first
+    if index, found := this._name_to_index_cache[name]; found {
+        node_ptr := this->getNodeByIndex(index)
+        if node_ptr != nil {
+            return node_ptr
+        }
+        // If cached index is invalid, remove from cache
+        delete_key(&this._name_to_index_cache, name)
+    }
+
+    for node_ptr, index in &this._nodes {
+        node := cast(^Node)node_ptr
+        if node == nil {
+            continue
+        }
+        if node.name == name {
+            // Update cache
+            this._name_to_index_cache[name] = cast(NodeIndex)index
+            return node_ptr
+        }
+   }
+   return nil
+}
+
 // Get node by its ID. Returns nil if not found.
 getNodeById :: proc(this: ^NodeManager, node_id: NodeID) -> rawptr {
     index := this->getNodeIndex(node_id)
@@ -465,17 +494,6 @@ getNewNodeId :: proc(this: ^NodeManager, node_ptr: rawptr) {
     node := cast(^Node)node_ptr
     node.id = this._node_id_counter
     this._node_id_counter += 1
-}
-
-// Get node by name. Returns the first match found, or nil if not found.
-getNodeByName :: proc(this: ^NodeManager, name: string) -> rawptr {
-    for node_ptr in &this._nodes {
-        node := cast(^Node)node_ptr
-        if node.name == name {
-            return node_ptr
-        }
-   }
-   return nil
 }
 
 // Add node to process list
@@ -532,6 +550,7 @@ _doAddNode :: proc(this: ^NodeManager, node: rawptr) {
     new_node_index := this->_getFreeNodeIndex()
     if new_node_index != -1 && new_node_index < cast(NodeIndex)len(this._nodes) {
         this._nodes[new_node_index] = node
+        this._name_to_index_cache[(cast(^Node)node).name] = new_node_index
     }
     else {
         _, err := append(&this._nodes, node)
@@ -540,6 +559,7 @@ _doAddNode :: proc(this: ^NodeManager, node: rawptr) {
             return
         }
         new_node_index = cast(NodeIndex)(len(this._nodes) - 1)
+        this._name_to_index_cache[(cast(^Node)node).name] = new_node_index
     }
 }
 

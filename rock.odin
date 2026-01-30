@@ -10,7 +10,7 @@ import fmt "core:fmt"
 createRock :: proc(position: rl.Vector2, color: rl.Color)  {
     using GAME
     newBody := createDynamicBody(GAME.world_id, "RockBody", rl.GetMousePosition())
-    box2d.Body_ApplyForceToCenter(newBody.body_id, box2d.Vec2{1000.0, 0}, true)
+    box2d.Body_ApplyForceToCenter(newBody.body_id, box2d.Vec2{3000.0, 0}, true)
     newBody.process = rockProcess
     node_manager->addNode(cast(rawptr)newBody)
     node_manager->addChild(getRoot(GAME), cast(rawptr)newBody)

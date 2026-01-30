@@ -1,16 +1,9 @@
 TODO: ParallaxLayer
-TODO: Collider
 TODO: Light2D
 TODO: Area2D
-TODO: Physics
-TODO: Raycasts
-TODO: Tilemap
 TODO: Statemachine
 TODO: Memory Cleanup/Optimize
 TODO: Combat System
-TODO: CollisionLayers/Masking
-TODO: ParticleSystem
-TODO: LevelEditor
 TODO: Scenes
 TODO: Transitions
 TODO: Path2D
