@@ -1,11 +1,8 @@
 package main
 
 import "core:math/ease"
-import "base:runtime"
-import "vendor:box2d"
 import rl "vendor:raylib"
-import fmt "core:fmt"
-import "core:mem"
+import "core:fmt"
 import "core:math"
 import "core:math/rand"
 
@@ -128,7 +125,6 @@ processParticleNode :: proc (pn_ptr: rawptr, delta_time: f32) {
 
         // Check lifetime
         if _lifetime_accum >= particle_life {
-            fmt.printfln("Total Particles Created in Lifetime: %d", _lifetime_particle_count)
             if one_shot {
                 emitting = false
             }
@@ -158,9 +154,6 @@ processParticleNode :: proc (pn_ptr: rawptr, delta_time: f32) {
                     else {
                         particles_to_create = int(_p_duration_accum / p_dur)
                         
-                    }
-                    if particles_to_create > 1 {
-                        fmt.printfln("Creating %d particles", particles_to_create)
                     }
                     
                 }

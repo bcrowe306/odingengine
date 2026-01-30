@@ -18,13 +18,7 @@ import "core:math"
 // Create the main game object as a global variable
 GAME := createGameObject("Oding Engine Test Game", target_fps=120)
 TRACK: mem.Tracking_Allocator
-test_value: f32 = 50.0
-
-
-
-
-
-
+bg_texture: rl.Texture2D
 
 main :: proc() {
     // Memory tracking setup
@@ -42,6 +36,7 @@ main :: proc() {
 	defer prof_deinit()
 
     GAME->init()
+    bg_texture = rl.LoadTexture("resources/Background.png")
 
 
     // Create root node and other game nodes
@@ -95,7 +90,7 @@ main :: proc() {
         target = characterBody.transform.global_pos,
         offset = rl.Vector2{GAME.window_size.x / 2, GAME.window_size.y / 2},
         zoom = 1.0,
-        limits = {0, 0, math.F32_MAX, 620}
+        limits = {0, 0, math.F32_MAX, 500}
 
     )
     GAME.node_manager->addNode(cast(rawptr)cameraNode)
@@ -117,18 +112,23 @@ main :: proc() {
     // Set root node
     GAME->setRoot(  root_id)
 
-
     // Run the main game loop
     GAME->run(root, proc(go: ^GameObject, root: ^Node, delta_time: f32) {
+        
+        rl.DrawTexturePro(
+            bg_texture,
+            rl.Rectangle{0, 0, f32(bg_texture.width), f32(bg_texture.height)},
+            rl.Rectangle{0, 0, f32(GAME.window_size.x), f32(GAME.window_size.y)},
+            rl.Vector2{0, 0},
+            0.0,
+            rl.WHITE
+        )
 
-            
         if rl.IsKeyPressed(rl.KeyboardKey.V) {
             GAME.layer_manager->setLayerVisibility(PARALLAX_LAYER_1, !GAME.layer_manager->getLayerVisibility(PARALLAX_LAYER_1))
         }
 
         rl.DrawText(fmt.ctprintf(" Mouse Position: (%d, %d) ", rl.GetMouseX(), rl.GetMouseY()), 300, 20, 20, rl.RAYWHITE)
-        
-        
         
     })
 

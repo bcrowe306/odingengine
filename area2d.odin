@@ -2,7 +2,6 @@ package main
 
 import rl "vendor:raylib"
 import "vendor:box2d"
-import fmt "core:fmt"
 
 
 
