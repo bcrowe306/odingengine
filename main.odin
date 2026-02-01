@@ -43,11 +43,20 @@ main :: proc() {
     root := createNode("Root")
     root_id := GAME.node_manager->addNode(cast(rawptr)root)
 
+    // Create parallax background nodes
+    parallax_bg1 := createParallaxNode(GAME.resource_manager, "ParallaxBG1", "resources/BackgroundTrees.png")
+    parallax_bg1.transform.position = rl.Vector2{100, 400}
+    parallax_bg1.horizontal_scroll_scale = 0.5
+    parallax_bg1.vertical_scroll_scale = .2
+    GAME.node_manager->addNode(cast(rawptr)parallax_bg1)
+    GAME.node_manager->addChild(root, cast(rawptr)parallax_bg1)
     
     // Create a tilemap node
     tilemap := createTileMapNode("resources/TileMaps/Level1.tmj", GAME.resource_manager)
     GAME.node_manager->addNode(cast(rawptr)tilemap)
     GAME.node_manager->addChild(root, cast(rawptr)tilemap)
+
+    
 
     // Create particle node
     particleNode := createParticleNode("ParticleNode", rl.Vector2{0, 0})
@@ -89,16 +98,16 @@ main :: proc() {
     cameraNode := createCameraNode("MainCamera",
         target = characterBody.transform.global_pos,
         offset = rl.Vector2{GAME.window_size.x / 2, GAME.window_size.y / 2},
-        zoom = 1.0,
-        limits = {0, 0, math.F32_MAX, 500}
+        zoom = 1.2,
+        limits = {0, 0, math.F32_MAX, 550}
 
     )
     GAME.node_manager->addNode(cast(rawptr)cameraNode)
-
     
     GAME.node_manager->addNode(cast(rawptr)wallCast)
     GAME.node_manager->addNode(cast(rawptr)characterSprite)
     GAME.node_manager->addNode(cast(rawptr)characterBody)
+
 
     GAME.node_manager->addChild(root, cast(rawptr)characterBody)
     GAME.node_manager->addChild(cast(^Node)characterBody, cast(rawptr)cameraNode)
